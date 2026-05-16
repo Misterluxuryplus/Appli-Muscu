@@ -1,0 +1,7 @@
+Pour lancer l’application :
+
+1. Ne pas ouvrir app.js
+2. Ne pas ouvrir style.css
+3. Double-cliquer uniquement sur index.html
+
+app.js et style.css sont des fichiers utilisés automatiquement par index.html.

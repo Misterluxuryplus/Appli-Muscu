@@ -1,0 +1,331 @@
+﻿<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Muscu Coach</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <section class="profile-screen" id="profileScreen">
+      <form class="profile-card" id="profileForm">
+        <p class="kicker">Première configuration</p>
+        <h1>Crée ton profil</h1>
+        <p class="profile-intro">Ces infos servent à garder ton suivi dans le temps.</p>
+
+        <label>Prénom
+          <input id="profileFirstName" type="text" autocomplete="given-name" required>
+        </label>
+        <label>Âge
+          <input id="profileAge" type="number" min="12" max="100" required>
+        </label>
+        <label>Poids actuel
+          <input id="profileBodyWeight" type="number" min="20" max="250" step="0.1" required>
+        </label>
+        <div class="choice-block">
+          <span>Mon objectif</span>
+          <div class="choice-cards" id="profileGoalChoices"></div>
+        </div>
+        <div class="choice-block">
+          <span>Niveau</span>
+          <div class="choice-cards compact" id="profileLevelChoices"></div>
+        </div>
+        <div class="choice-block">
+          <span>Durée du programme</span>
+          <div class="choice-cards compact" id="profileDurationChoices"></div>
+        </div>
+        <div class="choice-block">
+          <span>Quand veux-tu commencer ton programme ?</span>
+          <div class="choice-cards" id="profileStartChoices"></div>
+          <input class="hidden" id="profileStartDate" type="date">
+        </div>
+        <button class="primary-button" type="submit">Commencer</button>
+      </form>
+    </section>
+
+    <main class="phone-app hidden" id="appShell">
+      <header class="app-header">
+        <div>
+          <p class="kicker">Muscu Coach</p>
+          <h1>Coach de progression</h1>
+        </div>
+      </header>
+
+      <section class="screen active" id="homeScreen" aria-label="Accueil">
+        <article class="home-focus-card">
+          <p class="home-greeting" id="homeGreeting">Salut, prêt pour aujourd’hui ?</p>
+          <p class="program-marker" id="programMarker">Semaine 1 · Séance 1</p>
+          <div class="today-workout-card">
+            <span class="kicker">Séance du jour</span>
+            <h2 id="homeSessionName">Reprise 1</h2>
+            <p id="homeSessionMeta">35 min · Jambes, Dos, Pectoraux</p>
+            <small id="homeSessionDate">Prévue aujourd’hui</small>
+          </div>
+          <p class="home-motivation" id="homeMotivation">La régularité est la clé 🔑</p>
+          <div class="home-actions">
+            <button class="primary-button" id="goTraining" type="button">Je commence mon entraînement</button>
+            <button class="ghost-button" id="viewProgress" type="button">Voir ma progression</button>
+          </div>
+        </article>
+      </section>
+
+      <section class="screen" id="sessionScreen" aria-label="Séance">
+        <article class="session-hero">
+          <div>
+            <p class="kicker" id="sessionType">Force</p>
+            <h2 id="sessionName">Séance du jour</h2>
+            <p id="sessionMuscles">Pectoraux · Épaules · Triceps</p>
+          </div>
+          <div class="session-metrics">
+            <span id="sessionDuration">45 min</span>
+            <span id="sessionCalories">360 kcal</span>
+          </div>
+        </article>
+
+        <article class="panel warmup-panel">
+          <div class="panel-title">
+            <h3>Échauffement cardio</h3>
+            <span id="warmupStatus">15 min</span>
+          </div>
+          <p>L’échauffement prépare les muscles et les articulations avant la séance. Il aide à réduire les risques de blessure et améliore les performances.</p>
+          <div class="cardio-grid warmup-grid">
+            <div class="choice-block warmup-choice-block">
+              <span>Type</span>
+              <div class="choice-cards" id="warmupTypeChoices"></div>
+            </div>
+            <label>Durée
+              <input id="warmupDuration" type="number" min="0" max="15" step="1" value="15">
+            </label>
+            <label>Kcal
+              <input id="warmupCalories" type="number" min="0" max="500" step="1" placeholder="auto">
+            </label>
+          </div>
+          <button class="ghost-button" id="skipWarmup" type="button">Ignorer l’échauffement</button>
+        </article>
+
+        <section class="exercise-list" id="exerciseList"></section>
+
+        <article class="panel cardio-panel">
+          <div class="panel-title">
+            <h3>Cardio</h3>
+            <span id="cardioCaloriesPreview">0 kcal</span>
+          </div>
+          <div class="cardio-grid">
+            <label>Type
+              <select id="cardioType">
+                <option value="tapis de course">Tapis de course</option>
+                <option value="vélo droit">Vélo droit</option>
+                <option value="vélo semi-allongé">Vélo semi-allongé</option>
+                <option value="rameur">Rameur</option>
+                <option value="elliptique">Elliptique</option>
+                <option value="stairmaster">Stairmaster</option>
+                <option value="marche inclinée">Marche inclinée</option>
+                <option value="assault bike">Assault bike</option>
+                <option value="corde à sauter">Corde à sauter</option>
+                <option value="autre">Autre</option>
+              </select>
+            </label>
+            <label>Durée
+              <input id="cardioDuration" type="number" min="0" max="240" step="1" value="0">
+            </label>
+            <label>Calories machine
+              <input id="cardioCalories" type="number" min="0" max="3000" step="1" value="0">
+            </label>
+          </div>
+        </article>
+
+        <button class="finish-button" id="finishWorkout" type="button">Terminer la séance</button>
+        <button class="danger-ghost-button" id="resetSession" type="button">Réinitialiser cette séance</button>
+      </section>
+
+      <section class="screen summary-screen" id="summarySheet" aria-live="polite">
+        <article class="summary-card">
+          <p class="kicker">Bilan de séance</p>
+          <h2 id="summaryTitle">Bravo</h2>
+          <div class="summary-section">
+            <div class="summary-grid">
+              <p><span id="summaryDuration">0 min</span>Durée totale</p>
+              <p><span id="summaryCalories">0 kcal</span>Calories</p>
+              <p><span id="summaryExercises">0</span>Exercices</p>
+              <p><span id="summaryProgressions">0</span>Progression</p>
+            </div>
+          </div>
+          <div class="coach-summary">
+            <p id="summaryMessage">Séance enregistrée.</p>
+          </div>
+          <button class="primary-button" id="closeSummary" type="button">Retour à l'accueil</button>
+        </article>
+      </section>
+
+      <section class="screen exercise-guide-screen" id="exerciseSheet" aria-live="polite">
+        <article class="exercise-demo-card">
+          <button class="icon-button sheet-close" id="closeExerciseSheet" type="button" aria-label="Fermer">×</button>
+          <div class="demo-visual" id="demoVisual"></div>
+          <p class="kicker" id="demoType">Exercice</p>
+          <h2 id="demoTitle">Exercice</h2>
+          <div class="demo-muscles" id="demoMuscles"></div>
+          <div class="demo-block">
+            <h3>Conseils simples</h3>
+            <ul id="demoTips"></ul>
+          </div>
+          <div class="demo-block">
+            <h3>Erreurs à éviter</h3>
+            <ul id="demoMistakes"></ul>
+          </div>
+        </article>
+      </section>
+
+      <section class="screen" id="progressScreen" aria-label="Progression et statistiques">
+        <article class="panel progress-stats-panel">
+          <div class="panel-title">
+            <h3>Progression / Statistiques</h3>
+            <span id="progressPeriod">Programme</span>
+          </div>
+          <div class="summary-grid">
+            <p><span id="statsSessions">0</span>Séances réalisées</p>
+            <p><span id="statsCalories">0 kcal</span>Calories brûlées</p>
+            <p><span id="statsWeightChange">0 kg</span>Évolution poids</p>
+            <p><span id="statsProgressions">0</span>Progressions validées</p>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-title">
+            <h3>Calories par séance</h3>
+            <span>Graphique simple</span>
+          </div>
+          <div class="simple-chart" id="caloriesChart"></div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-title">
+            <h3>Historique résumé</h3>
+            <span id="statsHistoryCount">0 séance</span>
+          </div>
+          <div class="history-list" id="statsHistoryList"></div>
+        </article>
+      </section>
+
+      <section class="screen" id="programSummaryScreen" aria-label="Bilan du programme">
+        <article class="panel">
+          <div class="panel-title">
+            <h3>Bilan du programme</h3>
+            <span>⚖️ Poids</span>
+          </div>
+          <div class="summary-grid">
+            <p><span id="programSummarySessions">0</span>Séances réalisées</p>
+            <p><span id="programSummaryCalories">0 kcal</span>Calories brûlées</p>
+            <p><span id="programSummaryProgressions">0</span>Progressions</p>
+            <p><span id="programSummaryWeightChange">0 kg</span>Évolution poids</p>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-title">
+            <h3>Nouvelle pesée</h3>
+            <span id="programSummaryStartWeight">Départ 0 kg</span>
+          </div>
+          <label class="summary-weight-field">Poids actuel
+            <input id="programFinalWeight" type="number" min="20" max="250" step="0.1">
+          </label>
+          <button class="primary-button" id="saveProgramWeight" type="button">Enregistrer le bilan</button>
+          <p id="programSummaryMessage">Entre ton poids pour voir ton évolution.</p>
+        </article>
+      </section>
+
+      <section class="screen" id="profileMenuScreen" aria-label="Profil">
+        <article class="panel profile-panel">
+          <div class="panel-title">
+            <h3>Profil</h3>
+            <span id="profileEvolution">0 kg</span>
+          </div>
+          <form class="profile-edit-form" id="profileEditForm">
+            <label>Prénom
+              <input id="editFirstName" type="text" required>
+            </label>
+            <label>Âge
+              <input id="editAge" type="number" min="12" max="100" required>
+            </label>
+            <label>Poids actuel
+              <input id="editBodyWeight" type="number" min="20" max="250" step="0.1" required>
+            </label>
+            <div class="choice-block">
+              <span>Objectif</span>
+              <div class="choice-cards" id="editGoalChoices"></div>
+            </div>
+            <div class="choice-block">
+              <span>Niveau</span>
+              <div class="choice-cards compact" id="editLevelChoices"></div>
+            </div>
+            <button class="primary-button" type="submit">Enregistrer le profil</button>
+          </form>
+          <div class="goal-advice" id="goalAdvice">Choisis un objectif pour adapter les conseils.</div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-title">
+            <h3>Évolution du poids</h3>
+            <span id="weightHistoryCount">0 entrée</span>
+          </div>
+          <div class="profile-stats">
+            <p><span id="startWeight">0 kg</span>Départ</p>
+            <p><span id="currentWeight">0 kg</span>Actuel</p>
+            <p><span id="totalWeightChange">0 kg</span>Évolution</p>
+          </div>
+          <div class="history-list" id="weightHistoryList"></div>
+        </article>
+
+        <article class="panel danger-panel">
+          <div class="panel-title">
+            <h3>Réinitialisation</h3>
+            <span>Attention</span>
+          </div>
+          <p>Le reset complet efface le profil, l'historique, les poids, les calories et les progressions.</p>
+          <button class="danger-button" id="resetAllData" type="button">Reset complet profil</button>
+        </article>
+      </section>
+
+      <section class="screen" id="calendarScreen" aria-label="Calendrier">
+        <article class="panel calendar-panel">
+          <div class="panel-title">
+            <button class="icon-button" id="previousMonth" type="button" aria-label="Mois précédent">‹</button>
+            <h3 id="calendarTitle">Calendrier</h3>
+            <button class="icon-button" id="nextMonthButton" type="button" aria-label="Mois suivant">›</button>
+          </div>
+          <div class="calendar-weekdays">
+            <span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span>
+          </div>
+          <div class="calendar-grid" id="calendarGrid"></div>
+        </article>
+
+        <article class="panel day-detail-panel">
+          <div class="panel-title">
+            <h3 id="selectedDayTitle">Aujourd'hui</h3>
+            <span id="selectedDayStatus">À venir</span>
+          </div>
+          <p id="missedWorkoutMessage" class="calendar-message hidden">Pas grave, on reprend là où tu t’étais arrêté.</p>
+          <div class="day-detail" id="dayDetail"></div>
+          <div class="calendar-actions">
+            <button class="ghost-button" id="delayWorkoutDate" type="button">Décaler la séance</button>
+          </div>
+          <div class="delay-box hidden" id="delayBox">
+            <label>Nouvelle date
+              <input id="delayDateInput" type="date">
+            </label>
+            <button class="primary-button" id="confirmDelayWorkout" type="button">Confirmer le décalage</button>
+          </div>
+          <p class="calendar-confirmation hidden" id="calendarConfirmation">Séance décalée avec succès.</p>
+        </article>
+      </section>
+
+      <nav class="bottom-nav" aria-label="Navigation">
+        <button class="nav-item active" type="button" data-screen="homeScreen"><span>⌂</span>Accueil</button>
+        <button class="nav-item" type="button" data-screen="sessionScreen"><span>▣</span>Séance</button>
+        <button class="nav-item" type="button" data-screen="calendarScreen"><span>□</span>Calendrier</button>
+        <button class="nav-item" type="button" data-screen="profileMenuScreen"><span>◎</span>Profil</button>
+      </nav>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

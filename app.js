@@ -553,6 +553,7 @@ const defaultState = {
   nextWorkoutIndex: 0,
   activeWorkoutId: null,
   activeScheduledDate: null,
+  activeScheduledId: null,
   workoutStartedAt: null,
   sets: {},
   reps: {},
@@ -809,6 +810,7 @@ function normalizeState(loadedState) {
     const sequence = sessionSequence(item);
     return {
       ...item,
+      id: scheduleId(item),
       programId,
       programName: program.name,
       workoutId: program.workoutIds[sequence % program.workoutIds.length],
@@ -906,6 +908,7 @@ function generateProgramSchedule(programId, durationWeeks, trainingDays, startDa
     const sessionName = program.sessionNames[workoutIndex % program.sessionNames.length];
     const sessionDescription = program.sessionDescriptions?.[workoutIndex % program.sessionDescriptions.length] || "Séance simple et progressive.";
     planned.push({
+      id: `${programId}-${workoutIndex + 1}`,
       date: localDateKey(date),
       workoutId,
       programId,
@@ -977,6 +980,10 @@ function exerciseTargetLabel(exercise) {
   return `${exercise.sets} x ${exercise.reps} ${exerciseUnit(exercise)}`;
 }
 
+function scheduleId(item = {}) {
+  return item.id || `${item.type || "workout"}-${item.programId || "program"}-${item.sequence || item.workoutId || item.date}`;
+}
+
 function ensureCalendarState() {
   if (!state.selectedCalendarDate) state.selectedCalendarDate = todayKey();
   if (!state.calendarMonth) state.calendarMonth = monthKey();
@@ -986,6 +993,7 @@ function ensureCalendarState() {
     const start = new Date(`${state.programPlan.startDate || todayKey()}T00:00:00`);
     start.setDate(start.getDate() + Number(state.programPlan.durationWeeks || 6) * 7 - 1);
     state.scheduledWorkouts.push({
+      id: `weigh-in-${state.programPlan.programId}`,
       date: localDateKey(start),
       type: "weighIn",
       programId: state.programPlan.programId,
@@ -997,7 +1005,9 @@ function ensureCalendarState() {
 }
 
 function nextPlannedWorkoutFor(dateKey) {
-  const existing = state.scheduledWorkouts.find((item) => item.date === dateKey);
+  const existing = [...state.scheduledWorkouts]
+    .filter((item) => item.date === dateKey)
+    .sort((a, b) => Number(a.sequence || 0) - Number(b.sequence || 0))[0];
   if (existing) return existing;
   return null;
 }
@@ -1057,20 +1067,29 @@ function currentProgramWorkouts() {
 }
 
 function nextPlannedWorkoutItem() {
-  const doneDates = new Set(state.history.map((report) => report.date));
+  const doneIds = new Set(state.history.map((report) => report.scheduledId).filter(Boolean));
+  const doneDates = new Set(state.history.filter((report) => !report.scheduledId).map((report) => report.date));
   return [...state.scheduledWorkouts]
-    .filter((item) => item.type !== "weighIn" && !doneDates.has(item.date))
-    .sort((a, b) => a.date.localeCompare(b.date))[0];
+    .filter((item) => item.type !== "weighIn" && !doneIds.has(scheduleId(item)) && !doneDates.has(item.date))
+    .sort((a, b) => Number(a.sequence || 0) - Number(b.sequence || 0) || a.date.localeCompare(b.date))[0];
+}
+
+function scheduledWorkoutById(id) {
+  return state.scheduledWorkouts.find((item) => scheduleId(item) === id) || null;
+}
+
+function activePlannedWorkoutItem() {
+  return state.activeScheduledId ? scheduledWorkoutById(state.activeScheduledId) : nextPlannedWorkoutItem();
 }
 
 function currentSessionLabel(workout = activeWorkout()) {
-  const planned = nextPlannedWorkoutItem();
+  const planned = activePlannedWorkoutItem();
   if (planned && planned.workoutId === workout.id) return planned.sessionName || workout.name;
   return workout.name;
 }
 
 function sessionDescriptionFor(workout = activeWorkout()) {
-  const planned = nextPlannedWorkoutItem();
+  const planned = activePlannedWorkoutItem();
   if (planned && planned.workoutId === workout.id) return planned.sessionDescription || "Séance simple et progressive.";
   const program = currentProgram();
   const index = Math.max(0, program.workoutIds.indexOf(workout.id));
@@ -1209,11 +1228,12 @@ function showScreen(screenId) {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-function startWorkout() {
-  const planned = nextPlannedWorkoutItem();
+function startWorkout(plannedOverride = null) {
+  const planned = plannedOverride && plannedOverride.workoutId ? plannedOverride : nextPlannedWorkoutItem();
   const workout = planned ? workouts.find((item) => item.id === planned.workoutId) || nextWorkout() : nextWorkout();
   state.activeWorkoutId = workout.id;
   state.activeScheduledDate = planned?.date || null;
+  state.activeScheduledId = planned ? scheduleId(planned) : null;
   state.workoutStartedAt = Date.now();
   state.sets = {};
   state.reps = {};
@@ -1496,6 +1516,7 @@ function completeWorkout() {
   const report = {
     date: completedPlannedDate,
     completedAt: todayKey(),
+    scheduledId: state.activeScheduledId,
     workout: workout.name,
     sessionName: currentSessionLabel(workout),
     sessionDescription: sessionDescriptionFor(workout),
@@ -1520,10 +1541,13 @@ function completeWorkout() {
   state.history = state.history.slice(0, 12);
   state.exerciseHistory = state.exerciseHistory.slice(0, 200);
   state.sessionReports = state.sessionReports.slice(0, 60);
-  state.scheduledWorkouts = state.scheduledWorkouts.filter((item) => item.date !== completedPlannedDate);
+  state.scheduledWorkouts = state.scheduledWorkouts.filter((item) => (
+    state.activeScheduledId ? scheduleId(item) !== state.activeScheduledId : item.date !== completedPlannedDate
+  ));
   state.nextWorkoutIndex += 1;
   state.activeWorkoutId = null;
   state.activeScheduledDate = null;
+  state.activeScheduledId = null;
   state.workoutStartedAt = null;
   state.sets = {};
   state.reps = {};
@@ -1770,6 +1794,8 @@ function renderSelectedDay() {
         <strong>${planned.sessionName || workout.name}</strong>
         <span>${planned.sessionDescription || planned.programName || currentProgram().name}</span>
         <span>${workout.duration} min · ${workout.muscles.join(", ")}</span>
+        <button class="primary-button" type="button" data-start-scheduled="${scheduleId(planned)}">Commencer cette séance</button>
+        <button class="ghost-button" type="button" data-move-scheduled="${scheduleId(planned)}">Décaler / déplacer cette séance</button>
       </div>
       <div class="day-exercises">
         ${workout.exercises.map((exercise) => `<p><strong>${exercise.name}</strong><span>${exerciseTargetLabel(exercise)}</span></p>`).join("")}
@@ -1962,6 +1988,7 @@ elements.profileEditForm.addEventListener("submit", (event) => {
     state.nextWorkoutIndex = 0;
     state.activeWorkoutId = null;
     state.activeScheduledDate = null;
+    state.activeScheduledId = null;
     state.selectedCalendarDate = startDate;
     state.calendarMonth = monthKey(startDate);
     state.homeMotivation = pickMotivation("consistency", { firstName: state.profile.firstName });
@@ -2059,6 +2086,14 @@ $("#delayWorkoutDate").addEventListener("click", () => {
   elements.calendarConfirmation.classList.add("hidden");
 });
 
+function showMoveBox(planned) {
+  if (!planned) return;
+  state.selectedCalendarDate = planned.date;
+  elements.delayDateInput.value = planned.date;
+  elements.delayBox.classList.remove("hidden");
+  elements.calendarConfirmation.classList.add("hidden");
+}
+
 $("#confirmDelayWorkout").addEventListener("click", () => {
   ensureCalendarState();
   const date = state.selectedCalendarDate;
@@ -2066,10 +2101,12 @@ $("#confirmDelayWorkout").addEventListener("click", () => {
   const nextDate = elements.delayDateInput.value;
   if (!planned || !nextDate) return;
   planned.date = nextDate;
+  planned.id = scheduleId(planned);
   state.selectedCalendarDate = nextDate;
   state.calendarMonth = monthKey(nextDate);
   saveState();
   renderCalendar();
+  elements.calendarConfirmation.textContent = "Séance déplacée avec succès.";
   elements.calendarConfirmation.classList.remove("hidden");
 });
 
@@ -2136,6 +2173,15 @@ document.addEventListener("click", (event) => {
 
   const timerReset = event.target.closest("[data-timer-reset]");
   if (timerReset) resetTimer(timerReset.dataset.timerReset, timerReset.dataset.timerExercise);
+
+  const startScheduled = event.target.closest("[data-start-scheduled]");
+  if (startScheduled) {
+    const planned = scheduledWorkoutById(startScheduled.dataset.startScheduled);
+    if (planned) startWorkout(planned);
+  }
+
+  const moveScheduled = event.target.closest("[data-move-scheduled]");
+  if (moveScheduled) showMoveBox(scheduledWorkoutById(moveScheduled.dataset.moveScheduled));
 
   const guide = event.target.closest("[data-guide]");
   if (guide) openExerciseGuide(guide.dataset.guide);

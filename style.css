@@ -507,6 +507,47 @@ h3 { font-size: 1rem; }
   font-weight: 900;
 }
 
+.program-progress {
+  display: grid;
+  gap: 8px;
+  width: min(100%, 340px);
+  margin: 0 auto;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.program-progress-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.program-progress-head strong {
+  color: #ffe6a6;
+}
+
+.program-progress-bar {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.program-progress-bar span {
+  display: block;
+  width: 0%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--yellow), var(--orange), var(--blue));
+  transition: width 260ms ease;
+}
+
 .today-workout-card {
   display: grid;
   gap: 7px;
@@ -522,6 +563,14 @@ h3 { font-size: 1rem; }
 
 .today-workout-card h2 {
   font-size: 1.45rem;
+}
+
+#homeSessionDescription,
+#sessionDescription {
+  color: var(--text);
+  font-size: 0.92rem;
+  font-weight: 800;
+  line-height: 1.35;
 }
 
 .today-workout-card p,
@@ -1035,6 +1084,72 @@ h3 { font-size: 1rem; }
 .warmup-panel p {
   margin-bottom: 12px;
   line-height: 1.35;
+}
+
+.warmup-list {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.warmup-item {
+  display: grid;
+  gap: 12px;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.warmup-item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.warmup-item-head strong {
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.warmup-item-head span {
+  color: #ffe6a6;
+  font-size: 0.84rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.warmup-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.mini-link {
+  width: max-content;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.mini-link:hover {
+  color: #ffd166;
+}
+
+.empty-warmup {
+  padding: 12px;
+  border: 1px dashed var(--line);
+  border-radius: 16px;
+  color: var(--muted);
+}
+
+.warmup-panel > .ghost-button {
+  width: 100%;
+  margin-top: 10px;
 }
 
 .cardio-grid {

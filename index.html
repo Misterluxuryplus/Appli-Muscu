@@ -55,9 +55,17 @@
         <article class="home-focus-card">
           <p class="home-greeting" id="homeGreeting">Salut, prêt pour aujourd’hui ?</p>
           <p class="program-marker" id="programMarker">Semaine 1 · Séance 1</p>
+          <div class="program-progress">
+            <div class="program-progress-head">
+              <span>Progression du programme</span>
+              <strong id="programProgressText">0%</strong>
+            </div>
+            <div class="program-progress-bar" aria-hidden="true"><span id="programProgressBar"></span></div>
+          </div>
           <div class="today-workout-card">
             <span class="kicker">Séance du jour</span>
-            <h2 id="homeSessionName">Reprise 1</h2>
+            <h2 id="homeSessionName">Reprise douce</h2>
+            <p id="homeSessionDescription">Séance légère pour reprendre le rythme.</p>
             <p id="homeSessionMeta">35 min · Jambes, Dos, Pectoraux</p>
             <small id="homeSessionDate">Prévue aujourd’hui</small>
           </div>
@@ -74,6 +82,7 @@
           <div>
             <p class="kicker" id="sessionType">Force</p>
             <h2 id="sessionName">Séance du jour</h2>
+            <p id="sessionDescription">Séance simple et progressive.</p>
             <p id="sessionMuscles">Pectoraux · Épaules · Triceps</p>
           </div>
           <div class="session-metrics">
@@ -88,18 +97,8 @@
             <span id="warmupStatus">15 min</span>
           </div>
           <p>L’échauffement prépare les muscles et les articulations avant la séance. Il aide à réduire les risques de blessure et améliore les performances.</p>
-          <div class="cardio-grid warmup-grid">
-            <div class="choice-block warmup-choice-block">
-              <span>Type</span>
-              <div class="choice-cards" id="warmupTypeChoices"></div>
-            </div>
-            <label>Durée
-              <input id="warmupDuration" type="number" min="0" max="15" step="1" value="15">
-            </label>
-            <label>Kcal
-              <input id="warmupCalories" type="number" min="0" max="500" step="1" placeholder="auto">
-            </label>
-          </div>
+          <div class="warmup-list" id="warmupList"></div>
+          <button class="ghost-button" id="addWarmup" type="button">Ajouter un autre échauffement</button>
           <button class="ghost-button" id="skipWarmup" type="button">Ignorer l’échauffement</button>
         </article>
 

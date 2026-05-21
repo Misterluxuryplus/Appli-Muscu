@@ -92,7 +92,7 @@ const workouts = [
   },
   {
     id: "full_body",
-    name: "Séance complète",
+    name: "Full Body",
     type: "Équilibre",
     duration: 50,
     calories: 380,
@@ -134,7 +134,7 @@ const workouts = [
   },
   {
     id: "lower",
-    name: "Bas du corps",
+    name: "Dos & Bras",
     type: "Bas du corps",
     duration: 50,
     calories: 390,
@@ -162,7 +162,7 @@ const workouts = [
   },
   {
     id: "burner_1",
-    name: "Brûleur 1",
+    name: "Reprise cardio",
     type: "Cardio léger + renfo",
     duration: 45,
     calories: 430,
@@ -176,7 +176,7 @@ const workouts = [
   },
   {
     id: "burner_2",
-    name: "Brûleur 2",
+    name: "Cardio & Renfo",
     type: "Rameur + haut du corps",
     duration: 45,
     calories: 450,
@@ -190,7 +190,7 @@ const workouts = [
   },
   {
     id: "burner_3",
-    name: "Brûleur 3",
+    name: "Jambes & Endurance",
     type: "Circuit léger + cardio final",
     duration: 45,
     calories: 460,
@@ -204,7 +204,7 @@ const workouts = [
   },
   {
     id: "force_1",
-    name: "Force 1",
+    name: "Haut du corps",
     type: "Pectoraux + épaules",
     duration: 50,
     calories: 340,
@@ -217,7 +217,7 @@ const workouts = [
   },
   {
     id: "force_2",
-    name: "Force 2",
+    name: "Bas du corps",
     type: "Dos + bras",
     duration: 50,
     calories: 350,
@@ -230,7 +230,7 @@ const workouts = [
   },
   {
     id: "force_3",
-    name: "Force 3",
+    name: "Bas du corps",
     type: "Jambes + abdos",
     duration: 55,
     calories: 410,
@@ -244,7 +244,7 @@ const workouts = [
   },
   {
     id: "renfo_1",
-    name: "Renfo 1",
+    name: "Corps solide",
     type: "Corps complet",
     duration: 45,
     calories: 340,
@@ -258,7 +258,7 @@ const workouts = [
   },
   {
     id: "renfo_2",
-    name: "Renfo 2",
+    name: "Dos & Posture",
     type: "Dos + posture",
     duration: 45,
     calories: 330,
@@ -272,7 +272,7 @@ const workouts = [
   },
   {
     id: "renfo_3",
-    name: "Renfo 3",
+    name: "Jambes & Gainage",
     type: "Jambes + gainage",
     duration: 45,
     calories: 360,
@@ -286,7 +286,7 @@ const workouts = [
   },
   {
     id: "reprise_1",
-    name: "Reprise 1",
+    name: "Reprise douce",
     type: "Machines faciles",
     duration: 35,
     calories: 260,
@@ -300,7 +300,7 @@ const workouts = [
   },
   {
     id: "reprise_2",
-    name: "Reprise 2",
+    name: "Remise en mouvement",
     type: "Technique douce",
     duration: 35,
     calories: 250,
@@ -314,7 +314,7 @@ const workouts = [
   },
   {
     id: "reprise_3",
-    name: "Reprise 3",
+    name: "Cardio léger",
     type: "Renfo progressif",
     duration: 40,
     calories: 280,
@@ -328,7 +328,7 @@ const workouts = [
   },
   {
     id: "cardio_1",
-    name: "Cardio 1",
+    name: "Cardio progressif",
     type: "Cardio jambes",
     duration: 40,
     calories: 430,
@@ -341,7 +341,7 @@ const workouts = [
   },
   {
     id: "cardio_2",
-    name: "Cardio 2",
+    name: "Endurance douce",
     type: "Rameur + dos",
     duration: 40,
     calories: 440,
@@ -354,7 +354,7 @@ const workouts = [
   },
   {
     id: "cardio_3",
-    name: "Cardio 3",
+    name: "Circuit cardio",
     type: "Circuit cardio",
     duration: 40,
     calories: 450,
@@ -376,13 +376,76 @@ workouts.forEach((workout) => {
 });
 
 const programs = {
-  full_body: { name: "Améliorer mon cardio", sessionNames: ["Cardio 1", "Cardio 2", "Cardio 3"], workoutIds: ["cardio_1", "cardio_2", "cardio_3"] },
-  weight_loss: { name: "Perdre du poids", sessionNames: ["Brûleur 1", "Brûleur 2", "Brûleur 3"], workoutIds: ["burner_1", "burner_2", "burner_3"] },
-  strength: { name: "Renforcement", sessionNames: ["Renfo 1", "Renfo 2", "Renfo 3"], workoutIds: ["renfo_1", "renfo_2", "renfo_3"] },
-  muscle_gain: { name: "Me muscler", sessionNames: ["Force 1", "Force 2", "Force 3"], workoutIds: ["force_1", "force_2", "force_3"] },
-  upper_lower: { name: "Renforcement", sessionNames: ["Renfo 1", "Renfo 2", "Renfo 3"], workoutIds: ["renfo_1", "renfo_2", "renfo_3"] },
-  ppl: { name: "Me muscler", sessionNames: ["Force 1", "Force 2", "Force 3"], workoutIds: ["force_1", "force_2", "force_3"] },
-  beginner: { name: "Reprendre le sport", sessionNames: ["Reprise 1", "Reprise 2", "Reprise 3"], workoutIds: ["reprise_1", "reprise_2", "reprise_3"] },
+  full_body: {
+    name: "Améliorer mon cardio",
+    sessionNames: ["Cardio progressif", "Endurance douce", "Circuit cardio"],
+    sessionDescriptions: [
+      "Séance simple pour améliorer ton souffle sans te mettre dans le rouge.",
+      "Un travail régulier pour tenir plus longtemps et bouger avec confiance.",
+      "Un circuit accessible pour finir la semaine avec de l’énergie.",
+    ],
+    workoutIds: ["cardio_1", "cardio_2", "cardio_3"],
+  },
+  weight_loss: {
+    name: "Perdre du poids",
+    sessionNames: ["Reprise cardio", "Cardio & Renfo", "Jambes & Endurance"],
+    sessionDescriptions: [
+      "Séance légère pour brûler des calories et reprendre le rythme.",
+      "Un mélange simple de cardio et de renforcement pour progresser sans te cramer.",
+      "On travaille les jambes et l’endurance pour construire une base solide.",
+    ],
+    workoutIds: ["burner_1", "burner_2", "burner_3"],
+  },
+  strength: {
+    name: "Renforcement",
+    sessionNames: ["Corps solide", "Dos & Posture", "Jambes & Gainage"],
+    sessionDescriptions: [
+      "Séance complète pour renforcer tout le corps avec des mouvements simples.",
+      "On améliore le dos, les épaules et la posture sans compliquer la séance.",
+      "Un travail bas du corps et abdos pour te sentir plus stable.",
+    ],
+    workoutIds: ["renfo_1", "renfo_2", "renfo_3"],
+  },
+  muscle_gain: {
+    name: "Me muscler",
+    sessionNames: ["Haut du corps", "Bas du corps", "Full Body"],
+    sessionDescriptions: [
+      "Séance centrée sur le haut du corps avec une progression propre.",
+      "Travail des jambes pour construire de la force et de la stabilité.",
+      "Séance complète pour stimuler tout le corps et garder un bon équilibre.",
+    ],
+    workoutIds: ["force_1", "force_3", "full_body"],
+  },
+  upper_lower: {
+    name: "Renforcement",
+    sessionNames: ["Corps solide", "Dos & Posture", "Jambes & Gainage"],
+    sessionDescriptions: [
+      "Séance complète pour renforcer tout le corps avec des mouvements simples.",
+      "On améliore le dos, les épaules et la posture sans compliquer la séance.",
+      "Un travail bas du corps et abdos pour te sentir plus stable.",
+    ],
+    workoutIds: ["renfo_1", "renfo_2", "renfo_3"],
+  },
+  ppl: {
+    name: "Me muscler",
+    sessionNames: ["Haut du corps", "Bas du corps", "Full Body"],
+    sessionDescriptions: [
+      "Séance centrée sur le haut du corps avec une progression propre.",
+      "Travail des jambes pour construire de la force et de la stabilité.",
+      "Séance complète pour stimuler tout le corps et garder un bon équilibre.",
+    ],
+    workoutIds: ["force_1", "force_3", "full_body"],
+  },
+  beginner: {
+    name: "Reprendre le sport",
+    sessionNames: ["Reprise douce", "Remise en mouvement", "Cardio léger"],
+    sessionDescriptions: [
+      "Séance douce pour reprendre confiance et retrouver de bonnes sensations.",
+      "On remet le corps en mouvement avec des exercices simples et contrôlés.",
+      "Un peu de cardio et de renforcement pour finir sans pression.",
+    ],
+    workoutIds: ["reprise_1", "reprise_2", "reprise_3"],
+  },
 };
 
 const supportedProgramIds = ["weight_loss", "muscle_gain", "strength", "beginner", "upper_lower", "ppl"];
@@ -465,10 +528,24 @@ let draftProfileGoal = goalOptions[0];
 let draftProfileLevel = levelOptions[0];
 let draftEditGoal = goalOptions[0];
 let draftEditLevel = levelOptions[0];
-let draftWarmupType = warmupOptions[0];
 let draftDurationWeeks = 6;
 let draftStartMode = "today";
 const autoTrainingDays = [1, 3, 5];
+
+function clampWarmupDuration(value) {
+  return Math.max(0, Math.min(15, Number(value) || 0));
+}
+
+function createWarmupEntry(overrides = {}) {
+  return {
+    ...defaultWarmup,
+    id: overrides.id || `warmup-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+    type: warmupOptions.includes(overrides.type) ? overrides.type : defaultWarmup.type,
+    duration: clampWarmupDuration(overrides.duration ?? defaultWarmup.duration),
+    calories: Math.max(0, Number(overrides.calories) || 0),
+    skipped: false,
+  };
+}
 
 const defaultState = {
   profile: null,
@@ -484,6 +561,7 @@ const defaultState = {
   restTimers: {},
   restDurations: {},
   warmup: { ...defaultWarmup },
+  warmups: [{ ...defaultWarmup, id: "warmup-1" }],
   cardio: { type: "tapis de course", duration: 0, calories: 0 },
   history: [],
   exerciseHistory: [],
@@ -509,6 +587,7 @@ function freshState() {
     restTimers: {},
     restDurations: {},
     warmup: { ...defaultWarmup },
+    warmups: [createWarmupEntry()],
     cardio: { type: "tapis de course", duration: 0, calories: 0 },
     history: [],
     exerciseHistory: [],
@@ -532,7 +611,10 @@ const elements = {
   profileForm: $("#profileForm"),
   homeGreeting: $("#homeGreeting"),
   programMarker: $("#programMarker"),
+  programProgressText: $("#programProgressText"),
+  programProgressBar: $("#programProgressBar"),
   homeSessionName: $("#homeSessionName"),
+  homeSessionDescription: $("#homeSessionDescription"),
   homeSessionMeta: $("#homeSessionMeta"),
   homeSessionDate: $("#homeSessionDate"),
   homeMotivation: $("#homeMotivation"),
@@ -553,12 +635,11 @@ const elements = {
   programSummaryMessage: $("#programSummaryMessage"),
   sessionType: $("#sessionType"),
   sessionName: $("#sessionName"),
+  sessionDescription: $("#sessionDescription"),
   sessionMuscles: $("#sessionMuscles"),
   sessionDuration: $("#sessionDuration"),
   sessionCalories: $("#sessionCalories"),
-  warmupTypeChoices: $("#warmupTypeChoices"),
-  warmupDuration: $("#warmupDuration"),
-  warmupCalories: $("#warmupCalories"),
+  warmupList: $("#warmupList"),
   warmupStatus: $("#warmupStatus"),
   exerciseList: $("#exerciseList"),
   cardioType: $("#cardioType"),
@@ -616,6 +697,41 @@ function loadState() {
   }
 }
 
+function normalizeWarmups(warmups, legacyWarmup = null) {
+  const source = Array.isArray(warmups) ? warmups : [];
+  const legacy = legacyWarmup && !legacyWarmup.skipped && Number(legacyWarmup.duration || 0) > 0
+    ? [legacyWarmup]
+    : [];
+  const normalized = (source.length ? source : legacy)
+    .filter((item) => item && !item.skipped)
+    .map((item) => createWarmupEntry(item))
+    .filter((item) => item.duration > 0);
+  return normalized;
+}
+
+function warmupItemCalories(item) {
+  return Number(item.calories) || Math.round(Number(item.duration || 0) * 8);
+}
+
+function warmupSummary(warmups = []) {
+  const items = normalizeWarmups(warmups);
+  const duration = items.reduce((sum, item) => sum + Number(item.duration || 0), 0);
+  const calories = items.reduce((sum, item) => sum + warmupItemCalories(item), 0);
+  return {
+    type: items.map((item) => item.type).join(" + ") || defaultWarmup.type,
+    duration,
+    calories,
+    skipped: items.length === 0,
+    estimatedCalories: calories,
+  };
+}
+
+function ensureWarmups() {
+  state.warmups = normalizeWarmups(state.warmups, state.warmup);
+  state.warmup = warmupSummary(state.warmups);
+  return state.warmups;
+}
+
 function normalizeState(loadedState) {
   const normalized = {
     ...freshState(),
@@ -626,6 +742,8 @@ function normalizeState(loadedState) {
     scheduledWorkouts: loadedState.scheduledWorkouts || [],
     programPlan: loadedState.programPlan || null,
   };
+  normalized.warmups = normalizeWarmups(normalized.warmups, normalized.warmup);
+  normalized.warmup = warmupSummary(normalized.warmups);
   const visibleProgramIds = new Set(supportedProgramIds);
   const goalAliases = {
     "Perte de poids": "Perdre du poids",
@@ -650,7 +768,7 @@ function normalizeState(loadedState) {
       startDate: normalized.programPlan?.startDate || todayKey(),
     };
   }
-  const oldSessionNamePattern = /(Full Body|Push|Pull|Legs|Haut|Bas|Split|Calories|Muscle|Départ|Séance douce|Séance douce)/i;
+  const oldSessionNamePattern = /(Brûleur|Bruleur|Force|Renfo|Reprise\s*\d|Cardio\s*\d|Full Body|Push|Pull|Legs|Haut|Bas|Split|Calories|Muscle|Départ|Séance douce)/i;
   const inferSimpleProgramId = (item = {}) => {
     if (visibleProgramIds.has(item.programId)) return item.programId;
     if (item.programId === "ppl") return "muscle_gain";
@@ -669,6 +787,12 @@ function normalizeState(loadedState) {
     const sequence = numberMatch ? Number(numberMatch[1]) - 1 : Math.max(0, Number(item.sequence || 1) - 1);
     if (item.sessionName && !oldSessionNamePattern.test(item.sessionName)) return item.sessionName;
     return program.sessionNames[sequence % program.sessionNames.length];
+  };
+  const simpleSessionDescription = (item = {}) => {
+    const programId = inferSimpleProgramId(item);
+    const program = programs[programId] || programs.beginner;
+    const sequence = sessionSequence(item);
+    return item.sessionDescription || program.sessionDescriptions?.[sequence % program.sessionDescriptions.length] || "Séance simple et progressive.";
   };
   const sessionSequence = (item = {}) => {
     const numberMatch = String(item.sessionName || "").match(/(\d+)/);
@@ -689,6 +813,7 @@ function normalizeState(loadedState) {
       programName: program.name,
       workoutId: program.workoutIds[sequence % program.workoutIds.length],
       sessionName: simpleSessionName(item),
+      sessionDescription: simpleSessionDescription(item),
     };
   });
   normalized.history = (normalized.history || []).map((report) => {
@@ -698,6 +823,7 @@ function normalizeState(loadedState) {
       ...report,
       programName: program.name,
       sessionName: simpleSessionName(report),
+      sessionDescription: simpleSessionDescription(report),
     };
   });
   normalized.sessionReports = (normalized.sessionReports || []).map((report) => {
@@ -707,6 +833,7 @@ function normalizeState(loadedState) {
       ...report,
       programName: program.name,
       sessionName: simpleSessionName(report),
+      sessionDescription: simpleSessionDescription(report),
     };
   });
 
@@ -777,12 +904,14 @@ function generateProgramSchedule(programId, durationWeeks, trainingDays, startDa
     date.setDate(start.getDate() + week * 7 + gaps[dayInWeek]);
     const workoutId = program.workoutIds[workoutIndex % program.workoutIds.length];
     const sessionName = program.sessionNames[workoutIndex % program.sessionNames.length];
+    const sessionDescription = program.sessionDescriptions?.[workoutIndex % program.sessionDescriptions.length] || "Séance simple et progressive.";
     planned.push({
       date: localDateKey(date),
       workoutId,
       programId,
       programName: program.name,
       sessionName,
+      sessionDescription,
       sequence: workoutIndex + 1,
     });
   }
@@ -905,7 +1034,6 @@ function renderAllChoices() {
   if (!elements.profileStartDate.value) elements.profileStartDate.value = todayKey();
   renderChoiceCards(elements.editGoalChoices, goalOptions, draftEditGoal, "editGoal");
   renderChoiceCards(elements.editLevelChoices, levelOptions, draftEditLevel, "editLevel");
-  renderChoiceCards(elements.warmupTypeChoices, warmupOptions, draftWarmupType, "warmupType");
 }
 
 function nextWorkout() {
@@ -941,12 +1069,28 @@ function currentSessionLabel(workout = activeWorkout()) {
   return workout.name;
 }
 
-function programMarkerText() {
-  const totalSessions = Math.max(1, Number(state.programPlan?.durationWeeks || 1) * autoTrainingDays.length);
+function sessionDescriptionFor(workout = activeWorkout()) {
   const planned = nextPlannedWorkoutItem();
-  const nextSequence = planned?.sequence || Math.min(totalSessions, state.history.length + 1);
+  if (planned && planned.workoutId === workout.id) return planned.sessionDescription || "Séance simple et progressive.";
+  const program = currentProgram();
+  const index = Math.max(0, program.workoutIds.indexOf(workout.id));
+  return program.sessionDescriptions?.[index % program.sessionDescriptions.length] || "Séance simple et progressive.";
+}
+
+function programProgressInfo() {
+  const totalSessions = Math.max(1, Number(state.programPlan?.durationWeeks || 1) * autoTrainingDays.length);
+  const start = state.programPlan?.startDate || state.profile?.createdAt || todayKey();
+  const completed = (state.history || []).filter((report) => report.date >= start).length;
+  const planned = nextPlannedWorkoutItem();
+  const nextSequence = planned?.sequence || Math.min(totalSessions, completed + 1);
+  const percent = Math.min(100, Math.round((completed / totalSessions) * 100));
   const week = Math.max(1, Math.ceil(nextSequence / autoTrainingDays.length));
-  return `Semaine ${week} · Séance ${nextSequence}`;
+  return { totalSessions, completed, nextSequence, percent, week };
+}
+
+function programMarkerText() {
+  const progress = programProgressInfo();
+  return `Semaine ${progress.week} • Séance ${progress.nextSequence}`;
 }
 
 function latestExerciseResult(exerciseId) {
@@ -1075,7 +1219,8 @@ function startWorkout() {
   state.reps = {};
   state.restTimers = {};
   state.sessionStartWeights = {};
-  state.warmup = { ...defaultWarmup };
+  state.warmups = [createWarmupEntry()];
+  state.warmup = warmupSummary(state.warmups);
   state.cardio = { type: "tapis de course", duration: 0, calories: 0 };
 
   workout.exercises.forEach((exercise) => {
@@ -1138,35 +1283,71 @@ function updateCardio() {
     duration: Math.max(0, Number(elements.cardioDuration.value) || 0),
     calories: Math.max(0, Number(elements.cardioCalories.value) || 0),
   };
-  state.warmup = {
-    type: draftWarmupType,
-    duration: Math.max(0, Math.min(15, Number(elements.warmupDuration.value) || 0)),
-    calories: Math.max(0, Number(elements.warmupCalories.value) || 0),
-    skipped: Number(elements.warmupDuration.value) === 0,
-  };
   saveState();
   renderCardio();
 }
 
-function updateWarmup() {
-  state.warmup = {
-    type: draftWarmupType,
-    duration: Math.max(0, Math.min(15, Number(elements.warmupDuration.value) || 0)),
-    calories: Math.max(0, Number(elements.warmupCalories.value) || 0),
-    skipped: false,
-  };
+function updateWarmupItem(id, field, value) {
+  state.warmups = ensureWarmups().map((item) => {
+    if (item.id !== id) return item;
+    if (field === "type") return createWarmupEntry({ ...item, type: value });
+    if (field === "duration") return createWarmupEntry({ ...item, duration: value });
+    if (field === "calories") return createWarmupEntry({ ...item, calories: value });
+    return item;
+  });
+  state.warmup = warmupSummary(state.warmups);
+  saveState();
+  renderWarmup();
+}
+
+function addWarmup() {
+  state.warmups = [...ensureWarmups(), createWarmupEntry()];
+  state.warmup = warmupSummary(state.warmups);
+  saveState();
+  renderWarmup();
+}
+
+function removeWarmup(id) {
+  state.warmups = ensureWarmups().filter((item) => item.id !== id);
+  state.warmup = warmupSummary(state.warmups);
   saveState();
   renderWarmup();
 }
 
 function renderWarmup() {
-  const warmup = state.warmup || { ...defaultWarmup };
-  draftWarmupType = warmupOptions.includes(warmup.type) ? warmup.type : warmupOptions[0];
-  elements.warmupDuration.value = warmup.skipped ? 0 : warmup.duration;
-  elements.warmupCalories.value = warmup.calories || "";
-  const estimatedCalories = warmup.calories || Math.round((warmup.duration || 0) * 8);
-  elements.warmupStatus.textContent = warmup.skipped ? "Ignoré" : `${warmup.duration} min · ${estimatedCalories} kcal`;
-  renderChoiceCards(elements.warmupTypeChoices, warmupOptions, draftWarmupType, "warmupType");
+  const warmups = ensureWarmups();
+  const summary = warmupSummary(warmups);
+  state.warmup = summary;
+  elements.warmupStatus.textContent = summary.skipped ? "Ignoré" : `${summary.duration} min · ${summary.calories} kcal`;
+  elements.warmupList.innerHTML = warmups.length
+    ? warmups.map((item, index) => `
+      <article class="warmup-item">
+        <div class="warmup-item-head">
+          <strong>Échauffement ${index + 1}</strong>
+          <span>${item.duration} min · ${warmupItemCalories(item)} kcal</span>
+        </div>
+        <div class="choice-block warmup-choice-block">
+          <span>Type</span>
+          <div class="choice-cards">
+            ${warmupOptions.map((option) => `
+              <button class="choice-card ${option === item.type ? "active" : ""}" type="button" data-warmup-type="${item.id}" data-warmup-value="${option}">
+                ${option}
+              </button>
+            `).join("")}
+          </div>
+        </div>
+        <div class="cardio-grid warmup-fields">
+          <label>Durée
+            <input data-warmup-duration="${item.id}" type="number" min="1" max="15" step="1" value="${item.duration}">
+          </label>
+          <label>Kcal
+            <input data-warmup-calories="${item.id}" type="number" min="0" max="500" step="1" placeholder="${Math.round(item.duration * 8)}" value="${item.calories || ""}">
+          </label>
+        </div>
+        ${warmups.length > 1 ? `<button class="mini-link" type="button" data-remove-warmup="${item.id}">Supprimer cet échauffement</button>` : ""}
+      </article>
+    `).join("")
+    : `<p class="empty-warmup">Aucun échauffement sélectionné.</p>`;
 }
 
 function markSet(exerciseId, index) {
@@ -1255,7 +1436,8 @@ function completeWorkout() {
   };
   const startedAt = state.workoutStartedAt || Date.now();
   const strengthDuration = Math.max(workout.duration, Math.round((Date.now() - startedAt) / 60000));
-  const warmupDuration = state.warmup.skipped ? 0 : Number(state.warmup.duration || 0);
+  const warmups = ensureWarmups();
+  const warmupDuration = warmups.reduce((sum, item) => sum + Number(item.duration || 0), 0);
   const durationMinutes = strengthDuration + warmupDuration + Number(state.cardio.duration || 0);
   const totalSets = workout.exercises.reduce((sum, exercise) => sum + exercise.sets, 0);
   const doneSets = Object.values(state.sets).filter((status) => status === "done").length;
@@ -1306,7 +1488,7 @@ function completeWorkout() {
   });
 
   const strengthCalories = workout.calories || 0;
-  const warmupCalories = state.warmup.skipped ? 0 : (Number(state.warmup.calories) || Math.round(warmupDuration * 8));
+  const warmupCalories = warmups.reduce((sum, item) => sum + warmupItemCalories(item), 0);
   const cardioCalories = Number(state.cardio.calories) || 0;
   const totalCalories = strengthCalories + warmupCalories + cardioCalories;
   const exerciseCount = exerciseResults.filter((item) => item.statuses.some((status) => status !== "open")).length;
@@ -1316,13 +1498,15 @@ function completeWorkout() {
     completedAt: todayKey(),
     workout: workout.name,
     sessionName: currentSessionLabel(workout),
+    sessionDescription: sessionDescriptionFor(workout),
     programName: currentProgram().name,
     durationMinutes,
     exerciseCount,
     doneSets,
     totalSets,
     strengthCalories,
-    warmup: { ...state.warmup, estimatedCalories: warmupCalories },
+    warmup: warmupSummary(warmups),
+    warmups: warmups.map((item) => ({ ...item, estimatedCalories: warmupItemCalories(item) })),
     cardio: { ...state.cardio },
     totalCalories,
     progressions,
@@ -1418,11 +1602,15 @@ function renderProfile() {
 
 function renderHome() {
   renderProfile();
+  const progress = programProgressInfo();
   elements.homeGreeting.textContent = `Salut ${state.profile.firstName}, prêt pour aujourd’hui ?`;
   elements.programMarker.textContent = programMarkerText();
+  elements.programProgressText.textContent = `${progress.percent}% terminé`;
+  elements.programProgressBar.style.width = `${progress.percent}%`;
   const planned = nextPlannedWorkoutItem();
   const workout = planned ? workouts.find((item) => item.id === planned.workoutId) || nextWorkout() : nextWorkout();
   elements.homeSessionName.textContent = planned?.sessionName || workout.name;
+  elements.homeSessionDescription.textContent = planned?.sessionDescription || sessionDescriptionFor(workout);
   elements.homeSessionMeta.textContent = `${workout.duration} min · ${workout.muscles.slice(0, 3).join(", ")}`;
   elements.homeSessionDate.textContent = planned ? `Prévue le ${formatDateLabel(planned.date)}` : "Prochaine séance disponible";
   elements.homeMotivation.textContent = state.homeMotivation || dailyMotivation();
@@ -1548,7 +1736,8 @@ function renderSelectedDay() {
     elements.dayDetail.innerHTML = `
       <div class="day-summary-card">
         <strong>✅ ${report.sessionName || report.workout}</strong>
-        <span>${report.programName || "Programme"} · ${report.durationMinutes} min · ${report.totalCalories} kcal · ${report.progressions} progression${report.progressions > 1 ? "s" : ""}</span>
+        <span>${report.sessionDescription || report.programName || "Programme"}</span>
+        <span>${report.durationMinutes} min · ${report.totalCalories} kcal · ${report.progressions} progression${report.progressions > 1 ? "s" : ""}</span>
       </div>
       <div class="day-exercises">
         ${report.exercises.map((exercise) => {
@@ -1579,7 +1768,8 @@ function renderSelectedDay() {
     elements.dayDetail.innerHTML = `
       <div class="day-summary-card">
         <strong>${planned.sessionName || workout.name}</strong>
-        <span>${planned.programName || currentProgram().name} · ${workout.duration} min · ${workout.muscles.join(", ")}</span>
+        <span>${planned.sessionDescription || planned.programName || currentProgram().name}</span>
+        <span>${workout.duration} min · ${workout.muscles.join(", ")}</span>
       </div>
       <div class="day-exercises">
         ${workout.exercises.map((exercise) => `<p><strong>${exercise.name}</strong><span>${exerciseTargetLabel(exercise)}</span></p>`).join("")}
@@ -1588,13 +1778,14 @@ function renderSelectedDay() {
     return;
   }
 
-  elements.dayDetail.innerHTML = `<p class="empty-day">Aucune séance sur ce jour. Tu peux en ajouter une si tu veux t'organiser.</p>`;
+  elements.dayDetail.innerHTML = `<p class="empty-day">Aucune séance prévue sur ce jour.</p>`;
 }
 
 function renderSession() {
   const workout = activeWorkout();
   elements.sessionType.textContent = workout.type;
   elements.sessionName.textContent = currentSessionLabel(workout);
+  elements.sessionDescription.textContent = sessionDescriptionFor(workout);
   elements.sessionMuscles.textContent = workout.muscles.join(" · ");
   elements.sessionDuration.textContent = `${workout.duration} min`;
   elements.sessionCalories.textContent = `${workout.calories} kcal estimées`;
@@ -1795,7 +1986,8 @@ $("#resetSession").addEventListener("click", () => {
   state.reps = {};
   state.restTimers = {};
   state.sessionStartWeights = {};
-  state.warmup = { ...defaultWarmup };
+  state.warmups = [createWarmupEntry()];
+  state.warmup = warmupSummary(state.warmups);
   state.cardio = { type: "tapis de course", duration: 0, calories: 0 };
   if (state.activeWorkoutId) {
     activeWorkout().exercises.forEach((exercise) => {
@@ -1808,8 +2000,10 @@ $("#resetSession").addEventListener("click", () => {
   saveState();
   render();
 });
+$("#addWarmup").addEventListener("click", addWarmup);
 $("#skipWarmup").addEventListener("click", () => {
-  state.warmup = { type: draftWarmupType, duration: 0, calories: 0, skipped: true };
+  state.warmups = [];
+  state.warmup = warmupSummary([]);
   saveState();
   renderWarmup();
 });
@@ -1830,7 +2024,6 @@ $("#resetAllData").addEventListener("click", () => {
   draftProfileLevel = levelOptions[0];
   draftEditGoal = goalOptions[0];
   draftEditLevel = levelOptions[0];
-  draftWarmupType = warmupOptions[0];
   draftDurationWeeks = 6;
   draftStartMode = "today";
   elements.profileForm.reset();
@@ -1909,13 +2102,14 @@ document.addEventListener("click", (event) => {
     if (choice.dataset.choiceGroup === "startMode") draftStartMode = value;
     if (choice.dataset.choiceGroup === "editGoal") draftEditGoal = value;
     if (choice.dataset.choiceGroup === "editLevel") draftEditLevel = value;
-    if (choice.dataset.choiceGroup === "warmupType") {
-      draftWarmupType = value;
-      state.warmup = { ...(state.warmup || defaultWarmup), type: value, calories: Number(elements.warmupCalories.value) || 0, skipped: false };
-      saveState();
-    }
     renderAllChoices();
   }
+
+  const warmupType = event.target.closest("[data-warmup-type]");
+  if (warmupType) updateWarmupItem(warmupType.dataset.warmupType, "type", warmupType.dataset.warmupValue);
+
+  const removeWarmupButton = event.target.closest("[data-remove-warmup]");
+  if (removeWarmupButton) removeWarmup(removeWarmupButton.dataset.removeWarmup);
 
   const calendarDay = event.target.closest("[data-calendar-day]");
   if (calendarDay) {
@@ -1956,7 +2150,8 @@ document.addEventListener("change", (event) => {
   if (event.target.matches("[data-rest-minutes]")) setManualRest(event.target.dataset.restMinutes);
   if (event.target.matches("[data-rest-seconds]")) setManualRest(event.target.dataset.restSeconds);
   if (event.target.matches("[data-reps]")) setReps(event.target.dataset.reps, Number(event.target.dataset.index), event.target.value);
-  if (event.target.matches("#warmupDuration, #warmupCalories")) updateWarmup();
+  if (event.target.matches("[data-warmup-duration]")) updateWarmupItem(event.target.dataset.warmupDuration, "duration", event.target.value);
+  if (event.target.matches("[data-warmup-calories]")) updateWarmupItem(event.target.dataset.warmupCalories, "calories", event.target.value);
   if (event.target.matches("#cardioType, #cardioDuration, #cardioCalories")) updateCardio();
 });
 

@@ -560,7 +560,9 @@ const defaultState = {
   reps: {},
   exerciseStats: {},
   sessionStartWeights: {},
+  sessionWeights: {},
   restTimers: {},
+  executionTimers: {},
   restDurations: {},
   warmup: { ...defaultWarmup },
   warmups: [{ ...defaultWarmup, id: "warmup-1" }],
@@ -586,7 +588,9 @@ function freshState() {
     reps: {},
     exerciseStats: {},
     sessionStartWeights: {},
+    sessionWeights: {},
     restTimers: {},
+    executionTimers: {},
     restDurations: {},
     warmup: { ...defaultWarmup },
     warmups: [createWarmupEntry()],
@@ -739,6 +743,8 @@ function normalizeState(loadedState) {
     ...freshState(),
     ...loadedState,
     exerciseStats: loadedState.exerciseStats || {},
+    sessionWeights: loadedState.sessionWeights || {},
+    executionTimers: loadedState.executionTimers || {},
     exerciseHistory: loadedState.exerciseHistory || [],
     sessionReports: loadedState.sessionReports || [],
     scheduledWorkouts: loadedState.scheduledWorkouts || [],
@@ -1018,7 +1024,7 @@ function isBodyweightExercise(exercise) {
 }
 
 function exerciseTargetLabel(exercise) {
-  return `${exercise.sets} x ${exercise.reps} ${exerciseUnit(exercise)}`;
+  return `${exercise.sets} x ${exerciseTargetValue(exercise)} ${exerciseUnit(exercise)}`;
 }
 
 function scheduleId(item = {}) {
@@ -1175,6 +1181,10 @@ function setKey(exerciseId, index) {
   return `${exerciseId}-${index}`;
 }
 
+function executionKey(exerciseId, index) {
+  return `execution-${exerciseId}-${index}`;
+}
+
 function transitionKey(exerciseId) {
   return `transition-${exerciseId}`;
 }
@@ -1183,8 +1193,13 @@ function getSetStatus(exerciseId, index) {
   return state.sets[setKey(exerciseId, index)] || "open";
 }
 
+function exerciseTargetValue(exercise) {
+  if (exerciseUnit(exercise) === "sec") return Number(getStats(exercise).targetSeconds || exercise.reps);
+  return exercise.reps;
+}
+
 function getSetReps(exercise, index) {
-  return state.reps[setKey(exercise.id, index)] ?? exercise.reps;
+  return state.reps[setKey(exercise.id, index)] ?? exerciseTargetValue(exercise);
 }
 
 function getStats(exercise) {
@@ -1195,9 +1210,20 @@ function getStats(exercise) {
       sessions: 0,
       sameWeightSessions: 0,
       loweredToday: false,
+      targetSeconds: exerciseUnit(exercise) === "sec" ? exercise.reps : undefined,
     };
   }
+  if (exerciseUnit(exercise) === "sec" && !state.exerciseStats[exercise.id].targetSeconds) {
+    state.exerciseStats[exercise.id].targetSeconds = exercise.reps;
+  }
   return state.exerciseStats[exercise.id];
+}
+
+function currentSessionWeight(exercise, stats = getStats(exercise)) {
+  const savedWeight = state.sessionWeights?.[exercise.id];
+  if (savedWeight !== undefined && savedWeight !== null && savedWeight !== "") return Number(savedWeight) || 0;
+  if (stats.targetWeight !== undefined && stats.targetWeight !== null) return Number(stats.targetWeight) || 0;
+  return 0;
 }
 
 function restDuration(exerciseId) {
@@ -1230,6 +1256,12 @@ function getTimer(key) {
   if (typeof timer === "number") {
     return { duration: 75, remaining: Math.max(0, Math.ceil((timer - Date.now()) / 1000)), endAt: timer, paused: false };
   }
+  return timer;
+}
+
+function getExecutionTimer(key) {
+  const timer = state.executionTimers[key];
+  if (!timer) return null;
   return timer;
 }
 
@@ -1326,7 +1358,9 @@ function startWorkout(plannedOverride = null) {
   state.sets = {};
   state.reps = {};
   state.restTimers = {};
+  state.executionTimers = {};
   state.sessionStartWeights = {};
+  state.sessionWeights = {};
   state.warmups = [createWarmupEntry()];
   state.warmup = warmupSummary(state.warmups);
   state.cardio = { type: "tapis de course", duration: 0, calories: 0 };
@@ -1348,6 +1382,7 @@ function saveWeightInput(exerciseId, value) {
   const nextWeight = Math.max(0, Number(value) || 0);
   const startWeight = state.sessionStartWeights[exerciseId] ?? stats.lastWeight;
 
+  state.sessionWeights[exerciseId] = Math.round(nextWeight * 10) / 10;
   stats.targetWeight = Math.round(nextWeight * 10) / 10;
   stats.loweredToday = stats.targetWeight < startWeight;
   saveState();
@@ -1369,7 +1404,7 @@ function setWeight(exerciseId, value) {
 function adjustWeight(exerciseId, delta) {
   const exercise = activeWorkout().exercises.find((item) => item.id === exerciseId);
   const stats = getStats(exercise);
-  setWeight(exerciseId, Math.max(0, stats.targetWeight + delta));
+  setWeight(exerciseId, Math.max(0, currentSessionWeight(exercise, stats) + delta));
 }
 
 function setRest(exerciseId, value) {
@@ -1527,6 +1562,34 @@ function timerMessage(key) {
   return getTimer(key)?.message || "";
 }
 
+function executionTimerText(key, exercise) {
+  const timer = getExecutionTimer(key);
+  if (!timer) return formatTimer(exerciseTargetValue(exercise));
+  return formatTimer(timerRemaining(timer));
+}
+
+function executionTimerMessage(key) {
+  return getExecutionTimer(key)?.message || "";
+}
+
+function startExecutionTimer(exerciseId, index) {
+  const exercise = activeWorkout().exercises.find((item) => item.id === exerciseId);
+  if (!exercise || exerciseUnit(exercise) !== "sec") return;
+  const target = exerciseTargetValue(exercise);
+  state.executionTimers[executionKey(exerciseId, index)] = {
+    exerciseId,
+    index,
+    target,
+    remaining: target,
+    endAt: Date.now() + target * 1000,
+    paused: false,
+    message: "",
+  };
+  saveState();
+  render();
+  startTimer();
+}
+
 function toggleTimer(key) {
   const timer = getTimer(key);
   if (!timer) return;
@@ -1554,11 +1617,12 @@ function resetTimer(key, exerciseId) {
 function exerciseAnalysis(exercise) {
   const bodyweight = isBodyweightExercise(exercise);
   const stats = getStats(exercise);
+  const target = exerciseTargetValue(exercise);
   const finishedSets = Array.from({ length: exercise.sets }, (_, index) => getSetStatus(exercise.id, index) !== "open");
   const reps = Array.from({ length: exercise.sets }, (_, index) => getSetReps(exercise, index));
   const finishedCount = finishedSets.filter(Boolean).length;
-  const validatedCount = reps.filter((value, index) => finishedSets[index] && value >= exercise.reps).length;
-  const missedCount = reps.filter((value, index) => finishedSets[index] && value < exercise.reps).length;
+  const validatedCount = reps.filter((value, index) => finishedSets[index] && value >= target).length;
+  const missedCount = reps.filter((value, index) => finishedSets[index] && value < target).length;
 
   if (bodyweight) {
     if (missedCount > 0 && validatedCount > 0) return "Objectif presque atteint : garde une posture propre et respire régulièrement.";
@@ -1598,11 +1662,12 @@ function completeWorkout() {
   workout.exercises.forEach((exercise) => {
     const bodyweight = isBodyweightExercise(exercise);
     const stats = getStats(exercise);
+    const target = exerciseTargetValue(exercise);
     const statuses = Array.from({ length: exercise.sets }, (_, index) => getSetStatus(exercise.id, index));
     const reps = Array.from({ length: exercise.sets }, (_, index) => getSetReps(exercise, index));
     const allFinished = statuses.every((status) => status !== "open");
-    const allValidated = allFinished && reps.every((value) => value >= exercise.reps);
-    const hasMissedTarget = statuses.some((status, index) => status !== "open" && reps[index] < exercise.reps);
+    const allValidated = allFinished && reps.every((value) => value >= target);
+    const hasMissedTarget = statuses.some((status, index) => status !== "open" && reps[index] < target);
     const usedWeight = stats.targetWeight;
 
     const suggestedWeight = allValidated && !bodyweight
@@ -1612,8 +1677,10 @@ function completeWorkout() {
     if (allValidated) {
       stats.sameWeightSessions = 0;
       if (!bodyweight) progressions += 1;
+      if (bodyweight && exerciseUnit(exercise) === "sec") stats.targetSeconds = target + 5;
     } else {
       stats.sameWeightSessions += 1;
+      if (bodyweight && exerciseUnit(exercise) === "sec") stats.targetSeconds = target;
     }
 
     stats.lastWeight = usedWeight;
@@ -1628,7 +1695,7 @@ function completeWorkout() {
       reps,
       statuses,
       sets: exercise.sets,
-      targetReps: exercise.reps,
+      targetReps: target,
       unit: exerciseUnit(exercise),
       muscles: exercise.muscles,
       progressionValidated: allValidated,
@@ -1683,6 +1750,7 @@ function completeWorkout() {
   state.sets = {};
   state.reps = {};
   state.restTimers = {};
+  state.executionTimers = {};
   state.sessionStartWeights = {};
 
   const firstName = state.profile.firstName;
@@ -1952,16 +2020,25 @@ function renderSession() {
     const stats = getStats(exercise);
     const bodyweight = isBodyweightExercise(exercise);
     const advice = nextWeightAdvice(exercise, stats);
+    const target = exerciseTargetValue(exercise);
     const sets = Array.from({ length: exercise.sets }, (_, index) => {
       const key = setKey(exercise.id, index);
+      const execKey = executionKey(exercise.id, index);
       const status = getSetStatus(exercise.id, index);
       const timer = getTimer(key);
+      const executionTimer = getExecutionTimer(execKey);
       const remaining = timerRemaining(timer);
       const pauseLabel = timer?.paused ? "Reprendre" : "Pause";
+      const executionControl = exerciseUnit(exercise) === "sec" ? `
+          <button class="timer-button" type="button" data-execution-start="${exercise.id}" data-index="${index}">Lancer le chrono</button>
+          <span class="rest-badge" data-execution-timer="${execKey}">${executionTimerText(execKey, exercise)}</span>
+          <small class="timer-message" data-execution-message="${execKey}">${executionTimerMessage(execKey)}</small>
+        ` : "";
       return `
         <div class="set-row">
-          <div><strong>Série ${index + 1}</strong><small>objectif ${exercise.reps} ${exerciseUnit(exercise)}</small></div>
+          <div><strong>Série ${index + 1}</strong><small>objectif ${target} ${exerciseUnit(exercise)}</small></div>
           <input class="reps-input" type="number" min="0" max="999" value="${getSetReps(exercise, index)}" data-reps="${exercise.id}" data-index="${index}" aria-label="${exerciseUnit(exercise)} série ${index + 1}">
+          ${executionControl}
           <span class="rest-badge" data-timer="${key}">${timerText(key, exercise.id)}</span>
           <small class="timer-message" data-timer-message="${key}">${timerMessage(key)}</small>
           <button class="set-button ${status === "done" ? "done" : ""}" type="button" data-set="${exercise.id}" data-index="${index}">Série terminée</button>
@@ -2079,6 +2156,26 @@ function startTimer() {
         changedTimerState = true;
       }
     });
+    Object.keys(state.executionTimers || {}).forEach((key) => {
+      const timer = getExecutionTimer(key);
+      const left = timerRemaining(timer);
+      const badge = document.querySelector(`[data-execution-timer="${key}"]`);
+      const message = document.querySelector(`[data-execution-message="${key}"]`);
+      if (badge) badge.textContent = formatTimer(left);
+      if (message) message.textContent = timer?.message || "";
+      if (timer && !timer.paused && left > 0) hasActiveTimer = true;
+      if (timer && !timer.paused && left === 0) {
+        const alreadyFinished = timer.message === "Série terminée";
+        const exercise = activeWorkout().exercises.find((item) => item.id === timer.exerciseId);
+        const target = exercise ? exerciseTargetValue(exercise) : timer.target;
+        state.sets[setKey(timer.exerciseId, timer.index)] = "done";
+        state.reps[setKey(timer.exerciseId, timer.index)] = target;
+        state.executionTimers[key] = { ...timer, remaining: 0, endAt: null, paused: true, message: "Série terminée" };
+        if (!alreadyFinished) notifyRestTimer(true);
+        if (message) message.textContent = "Série terminée";
+        changedTimerState = true;
+      }
+    });
     if (changedTimerState) saveState();
     if (!hasActiveTimer) clearInterval(timerId);
   }, 1000);
@@ -2174,6 +2271,7 @@ $("#resetSession").addEventListener("click", () => {
   state.sets = {};
   state.reps = {};
   state.restTimers = {};
+  state.executionTimers = {};
   state.sessionStartWeights = {};
   state.warmups = [createWarmupEntry()];
   state.warmup = warmupSummary(state.warmups);
@@ -2335,6 +2433,9 @@ document.addEventListener("click", (event) => {
 
   const timerReset = event.target.closest("[data-timer-reset]");
   if (timerReset) resetTimer(timerReset.dataset.timerReset, timerReset.dataset.timerExercise);
+
+  const executionStart = event.target.closest("[data-execution-start]");
+  if (executionStart) startExecutionTimer(executionStart.dataset.executionStart, Number(executionStart.dataset.index));
 
   const startScheduled = event.target.closest("[data-start-scheduled]");
   if (startScheduled) {

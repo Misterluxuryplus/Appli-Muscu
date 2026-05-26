@@ -873,10 +873,23 @@ function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
+function resetTemporarySessionFields() {
+  state.sets = {};
+  state.reps = {};
+  state.restTimers = {};
+  state.executionTimers = {};
+  state.sessionStartWeights = {};
+  state.sessionWeights = {};
+  state.sessionTimedTargets = {};
+  state.warmups = [createWarmupEntry()];
+  state.warmup = warmupSummary(state.warmups);
+  state.cardio = { type: "tapis de course", duration: 0, calories: 0 };
+}
+
 function syncActiveSessionInputsFromDOM() {
   // Sauvegarde de sécurité : récupère ce qui est affiché à l'écran avant de changer de page,
   // de quitter l'application ou de relancer un rendu. Ça évite de perdre un poids/reps tapé.
-  if (!state?.profile) return;
+  if (!state?.profile || !state.activeWorkoutId) return;
 
   document.querySelectorAll('[data-weight]').forEach((input) => {
     const exerciseId = input.dataset.weight;
@@ -1375,16 +1388,7 @@ function startWorkout(plannedOverride = null) {
   state.activeScheduledDate = planned?.date || null;
   state.activeScheduledId = planned ? scheduleId(planned) : null;
   state.workoutStartedAt = Date.now();
-  state.sets = {};
-  state.reps = {};
-  state.restTimers = {};
-  state.executionTimers = {};
-  state.sessionStartWeights = {};
-  state.sessionTimedTargets = {};
-  state.sessionWeights = {};
-  state.warmups = [createWarmupEntry()];
-  state.warmup = warmupSummary(state.warmups);
-  state.cardio = { type: "tapis de course", duration: 0, calories: 0 };
+  resetTemporarySessionFields();
 
   workout.exercises.forEach((exercise) => {
     state.sessionStartWeights[exercise.id] = getStats(exercise).targetWeight;
@@ -1773,12 +1777,7 @@ function completeWorkout() {
   state.activeScheduledDate = null;
   state.activeScheduledId = null;
   state.workoutStartedAt = null;
-  state.sets = {};
-  state.reps = {};
-  state.restTimers = {};
-  state.executionTimers = {};
-  state.sessionStartWeights = {};
-  state.sessionTimedTargets = {};
+  resetTemporarySessionFields();
 
   const firstName = state.profile.firstName;
   const hasMissedTargets = exerciseResults.some((item) => item.needsSameWeight);
@@ -2329,14 +2328,7 @@ $("#viewProgress").addEventListener("click", () => showScreen("progressScreen"))
 $("#finishWorkout").addEventListener("click", completeWorkout);
 $("#resetSession").addEventListener("click", () => {
   if (!confirm("Voulez-vous vraiment réinitialiser cette séance ?")) return;
-  state.sets = {};
-  state.reps = {};
-  state.restTimers = {};
-  state.executionTimers = {};
-  state.sessionStartWeights = {};
-  state.warmups = [createWarmupEntry()];
-  state.warmup = warmupSummary(state.warmups);
-  state.cardio = { type: "tapis de course", duration: 0, calories: 0 };
+  resetTemporarySessionFields();
   if (state.activeWorkoutId) {
     activeWorkout().exercises.forEach((exercise) => {
       const stats = getStats(exercise);

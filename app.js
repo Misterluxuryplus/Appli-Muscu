@@ -561,6 +561,7 @@ const defaultState = {
   exerciseStats: {},
   sessionStartWeights: {},
   sessionWeights: {},
+  sessionTimedTargets: {},
   restTimers: {},
   executionTimers: {},
   restDurations: {},
@@ -589,6 +590,7 @@ function freshState() {
     exerciseStats: {},
     sessionStartWeights: {},
     sessionWeights: {},
+    sessionTimedTargets: {},
     restTimers: {},
     executionTimers: {},
     restDurations: {},
@@ -744,6 +746,7 @@ function normalizeState(loadedState) {
     ...loadedState,
     exerciseStats: loadedState.exerciseStats || {},
     sessionWeights: loadedState.sessionWeights || {},
+    sessionTimedTargets: loadedState.sessionTimedTargets || {},
     executionTimers: loadedState.executionTimers || {},
     exerciseHistory: loadedState.exerciseHistory || [],
     sessionReports: loadedState.sessionReports || [],
@@ -890,6 +893,10 @@ function syncActiveSessionInputsFromDOM() {
 
   document.querySelectorAll('[data-rest-minutes]').forEach((input) => {
     saveManualRestInput(input.dataset.restMinutes);
+  });
+
+  document.querySelectorAll('[data-hold-minutes]').forEach((input) => {
+    saveTimedTargetInput(input.dataset.holdMinutes);
   });
 
   if (elements?.cardioType && elements?.cardioDuration && elements?.cardioCalories) {
@@ -1194,7 +1201,11 @@ function getSetStatus(exerciseId, index) {
 }
 
 function exerciseTargetValue(exercise) {
-  if (exerciseUnit(exercise) === "sec") return Number(getStats(exercise).targetSeconds || exercise.reps);
+  if (exerciseUnit(exercise) === "sec") {
+    const sessionTarget = state.sessionTimedTargets?.[exercise.id];
+    if (sessionTarget !== undefined && sessionTarget !== null && sessionTarget !== "") return Math.max(1, Number(sessionTarget) || exercise.reps);
+    return Number(getStats(exercise).targetSeconds || exercise.reps);
+  }
   return exercise.reps;
 }
 
@@ -1224,6 +1235,15 @@ function currentSessionWeight(exercise, stats = getStats(exercise)) {
   if (savedWeight !== undefined && savedWeight !== null && savedWeight !== "") return Number(savedWeight) || 0;
   if (stats.targetWeight !== undefined && stats.targetWeight !== null) return Number(stats.targetWeight) || 0;
   return 0;
+}
+
+function saveTimedTargetInput(exerciseId) {
+  const minuteInput = document.querySelector(`[data-hold-minutes="${exerciseId}"]`);
+  const secondInput = document.querySelector(`[data-hold-seconds="${exerciseId}"]`);
+  const minutes = Math.max(0, Number(minuteInput?.value) || 0);
+  const seconds = Math.max(0, Number(secondInput?.value) || 0);
+  state.sessionTimedTargets[exerciseId] = Math.max(1, minutes * 60 + seconds);
+  saveState();
 }
 
 function restDuration(exerciseId) {
@@ -1360,6 +1380,7 @@ function startWorkout(plannedOverride = null) {
   state.restTimers = {};
   state.executionTimers = {};
   state.sessionStartWeights = {};
+  state.sessionTimedTargets = {};
   state.sessionWeights = {};
   state.warmups = [createWarmupEntry()];
   state.warmup = warmupSummary(state.warmups);
@@ -1519,8 +1540,12 @@ function markSet(exerciseId, index) {
   const workout = activeWorkout();
   const exerciseIndex = workout.exercises.findIndex((item) => item.id === exerciseId);
   const exercise = workout.exercises[exerciseIndex];
+  const target = exerciseTargetValue(exercise);
+  const timedExercise = exerciseUnit(exercise) === "sec";
+  const executionDone = !timedExercise || getExecutionTimer(executionKey(exerciseId, index))?.message === "Gainage terminé";
+  if (!executionDone) return;
   if (state.reps[setKey(exerciseId, index)] === undefined) {
-    state.reps[setKey(exerciseId, index)] = exercise.reps;
+    state.reps[setKey(exerciseId, index)] = target;
   }
   state.sets[setKey(exerciseId, index)] = "done";
   const duration = restDuration(exerciseId);
@@ -1546,7 +1571,7 @@ function markSet(exerciseId, index) {
     };
   }
   const repsDone = getSetReps(exercise, index);
-  updateMessage(repsDone >= exercise.reps ? "Très bien, série proprement terminée." : "On garde le même poids pour la prochaine séance afin de valider proprement.");
+  updateMessage(repsDone >= target ? "Très bien, série proprement terminée." : "On garde le même poids pour la prochaine séance afin de valider proprement.");
   saveState();
   render();
   startTimer();
@@ -1573,6 +1598,7 @@ function executionTimerMessage(key) {
 }
 
 function startExecutionTimer(exerciseId, index) {
+  saveTimedTargetInput(exerciseId);
   const exercise = activeWorkout().exercises.find((item) => item.id === exerciseId);
   if (!exercise || exerciseUnit(exercise) !== "sec") return;
   const target = exerciseTargetValue(exercise);
@@ -1627,7 +1653,7 @@ function exerciseAnalysis(exercise) {
   if (bodyweight) {
     if (missedCount > 0 && validatedCount > 0) return "Objectif presque atteint : garde une posture propre et respire régulièrement.";
     if (missedCount > 0) return "Garde le même temps la prochaine fois et privilégie une position solide.";
-    if (finishedCount === exercise.sets && validatedCount === exercise.sets) return "Très bon gainage : posture validée, continue proprement.";
+    if (finishedCount === exercise.sets && validatedCount === exercise.sets) return "Très bon gainage : +5 sec proposés pour la prochaine séance.";
     if (validatedCount > 0) return "Bonne tenue, garde les abdos serrés et le dos stable.";
     return "Objectif : tenir le temps prévu avec une posture propre.";
   }
@@ -1752,6 +1778,7 @@ function completeWorkout() {
   state.restTimers = {};
   state.executionTimers = {};
   state.sessionStartWeights = {};
+  state.sessionTimedTargets = {};
 
   const firstName = state.profile.firstName;
   const hasMissedTargets = exerciseResults.some((item) => item.needsSameWeight);
@@ -2021,6 +2048,7 @@ function renderSession() {
     const bodyweight = isBodyweightExercise(exercise);
     const advice = nextWeightAdvice(exercise, stats);
     const target = exerciseTargetValue(exercise);
+    const timedExercise = exerciseUnit(exercise) === "sec";
     const sets = Array.from({ length: exercise.sets }, (_, index) => {
       const key = setKey(exercise.id, index);
       const execKey = executionKey(exercise.id, index);
@@ -2029,19 +2057,21 @@ function renderSession() {
       const executionTimer = getExecutionTimer(execKey);
       const remaining = timerRemaining(timer);
       const pauseLabel = timer?.paused ? "Reprendre" : "Pause";
-      const executionControl = exerciseUnit(exercise) === "sec" ? `
-          <button class="timer-button" type="button" data-execution-start="${exercise.id}" data-index="${index}">Lancer le chrono</button>
+      const holdFinished = executionTimer?.message === "Gainage terminé";
+      const executionControl = timedExercise ? `
+          <button class="timer-button" type="button" data-execution-start="${exercise.id}" data-index="${index}">Lancer le gainage</button>
           <span class="rest-badge" data-execution-timer="${execKey}">${executionTimerText(execKey, exercise)}</span>
           <small class="timer-message" data-execution-message="${execKey}">${executionTimerMessage(execKey)}</small>
         ` : "";
+      const repsInput = timedExercise ? "" : `<input class="reps-input" type="number" min="0" max="999" value="${getSetReps(exercise, index)}" data-reps="${exercise.id}" data-index="${index}" aria-label="${exerciseUnit(exercise)} série ${index + 1}">`;
       return `
         <div class="set-row">
           <div><strong>Série ${index + 1}</strong><small>objectif ${target} ${exerciseUnit(exercise)}</small></div>
-          <input class="reps-input" type="number" min="0" max="999" value="${getSetReps(exercise, index)}" data-reps="${exercise.id}" data-index="${index}" aria-label="${exerciseUnit(exercise)} série ${index + 1}">
+          ${repsInput}
           ${executionControl}
           <span class="rest-badge" data-timer="${key}">${timerText(key, exercise.id)}</span>
           <small class="timer-message" data-timer-message="${key}">${timerMessage(key)}</small>
-          <button class="set-button ${status === "done" ? "done" : ""}" type="button" data-set="${exercise.id}" data-index="${index}">Série terminée</button>
+          <button class="set-button ${status === "done" ? "done" : ""}" type="button" data-set="${exercise.id}" data-index="${index}" ${timedExercise && !holdFinished && status !== "done" ? "disabled" : ""}>Série terminée</button>
           <button class="timer-button" type="button" data-timer-toggle="${key}" ${!timer || remaining <= 0 ? "disabled" : ""}>${pauseLabel}</button>
           <button class="timer-button" type="button" data-timer-reset="${key}" data-timer-exercise="${exercise.id}" ${!timer ? "disabled" : ""}>Reset</button>
         </div>
@@ -2079,6 +2109,18 @@ function renderSession() {
               <input type="number" min="0" step="0.5" value="${stats.targetWeight}" data-weight="${exercise.id}" aria-label="Poids ${exercise.name}">
               <span>kg</span>
               <button type="button" data-weight-plus="${exercise.id}">+</button>
+            </div>
+          ` : ""}
+          ${timedExercise ? `
+            <label>Temps de maintien <small>${target} sec</small></label>
+            <div class="rest-control">
+              <label class="rest-number-field">Min
+                <input type="number" min="0" max="10" step="1" value="${Math.floor(target / 60)}" data-hold-minutes="${exercise.id}" aria-label="Minutes gainage ${exercise.name}">
+              </label>
+              <label class="rest-number-field">Sec
+                <input type="number" min="0" max="59" step="5" value="${target % 60}" data-hold-seconds="${exercise.id}" aria-label="Secondes gainage ${exercise.name}">
+              </label>
+              <span>${formatTimer(target)}</span>
             </div>
           ` : ""}
           ${!bodyweight && advice ? `
@@ -2165,14 +2207,13 @@ function startTimer() {
       if (message) message.textContent = timer?.message || "";
       if (timer && !timer.paused && left > 0) hasActiveTimer = true;
       if (timer && !timer.paused && left === 0) {
-        const alreadyFinished = timer.message === "Série terminée";
+        const alreadyFinished = timer.message === "Gainage terminé";
         const exercise = activeWorkout().exercises.find((item) => item.id === timer.exerciseId);
-        const target = exercise ? exerciseTargetValue(exercise) : timer.target;
-        state.sets[setKey(timer.exerciseId, timer.index)] = "done";
-        state.reps[setKey(timer.exerciseId, timer.index)] = target;
-        state.executionTimers[key] = { ...timer, remaining: 0, endAt: null, paused: true, message: "Série terminée" };
+        state.executionTimers[key] = { ...timer, remaining: 0, endAt: null, paused: true, message: "Gainage terminé" };
         if (!alreadyFinished) notifyRestTimer(true);
-        if (message) message.textContent = "Série terminée";
+        if (message) message.textContent = "Gainage terminé";
+        const setButton = document.querySelector(`[data-set="${timer.exerciseId}"][data-index="${timer.index}"]`);
+        if (setButton) setButton.disabled = false;
         changedTimerState = true;
       }
     });
@@ -2458,6 +2499,8 @@ document.addEventListener("input", (event) => {
   if (event.target.matches("[data-reps]")) setReps(event.target.dataset.reps, Number(event.target.dataset.index), event.target.value);
   if (event.target.matches("[data-rest-minutes]")) saveManualRestInput(event.target.dataset.restMinutes);
   if (event.target.matches("[data-rest-seconds]")) saveManualRestInput(event.target.dataset.restSeconds);
+  if (event.target.matches("[data-hold-minutes]")) saveTimedTargetInput(event.target.dataset.holdMinutes);
+  if (event.target.matches("[data-hold-seconds]")) saveTimedTargetInput(event.target.dataset.holdSeconds);
   if (event.target.matches("#cardioType, #cardioDuration, #cardioCalories")) saveCardioInput();
   if (event.target.matches("[data-warmup-duration]")) saveWarmupInput(event.target.dataset.warmupDuration, "duration", event.target.value);
   if (event.target.matches("[data-warmup-calories]")) saveWarmupInput(event.target.dataset.warmupCalories, "calories", event.target.value);
@@ -2468,6 +2511,8 @@ document.addEventListener("change", (event) => {
   if (event.target.matches("[data-rest-duration]")) setRest(event.target.dataset.restDuration, event.target.value);
   if (event.target.matches("[data-rest-minutes]")) setManualRest(event.target.dataset.restMinutes);
   if (event.target.matches("[data-rest-seconds]")) setManualRest(event.target.dataset.restSeconds);
+  if (event.target.matches("[data-hold-minutes]")) { saveTimedTargetInput(event.target.dataset.holdMinutes); render(); }
+  if (event.target.matches("[data-hold-seconds]")) { saveTimedTargetInput(event.target.dataset.holdSeconds); render(); }
   if (event.target.matches("[data-reps]")) setReps(event.target.dataset.reps, Number(event.target.dataset.index), event.target.value);
   if (event.target.matches("[data-warmup-duration]")) updateWarmupItem(event.target.dataset.warmupDuration, "duration", event.target.value);
   if (event.target.matches("[data-warmup-calories]")) updateWarmupItem(event.target.dataset.warmupCalories, "calories", event.target.value);

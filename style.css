@@ -1058,6 +1058,11 @@ h3 { font-size: 1rem; }
   font-variant-numeric: tabular-nums;
 }
 
+.timer-message {
+  color: #ffe6a6;
+  font-weight: 900;
+}
+
 .set-button.done {
   background: rgba(86, 227, 159, 0.18);
   color: var(--green);
@@ -1071,6 +1076,13 @@ h3 { font-size: 1rem; }
   color: #c7efff;
   font-size: 0.86rem;
   font-weight: 750;
+}
+
+.transition-rest {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .cardio-panel {

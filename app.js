@@ -1,5 +1,6 @@
 const STORAGE_KEY = "muscu-coach-mobile";
 const MAX_REST_SECONDS = 180;
+const TRANSITION_REST_SECONDS = 120;
 const defaultWarmup = { type: "Tapis de course", duration: 15, calories: 0, skipped: false };
 
 const thumbnails = {
@@ -1134,6 +1135,10 @@ function setKey(exerciseId, index) {
   return `${exerciseId}-${index}`;
 }
 
+function transitionKey(exerciseId) {
+  return `transition-${exerciseId}`;
+}
+
 function getSetStatus(exerciseId, index) {
   return state.sets[setKey(exerciseId, index)] || "open";
 }
@@ -1173,7 +1178,7 @@ function parseTimerInput(value) {
 }
 
 function formatTimer(seconds) {
-  const safeSeconds = clampRestSeconds(seconds);
+  const safeSeconds = Math.min(MAX_REST_SECONDS, Math.max(0, Number(seconds) || 0));
   const minutes = Math.floor(safeSeconds / 60).toString().padStart(2, "0");
   const restSeconds = Math.floor(safeSeconds % 60).toString().padStart(2, "0");
   return `${minutes}:${restSeconds}`;
@@ -1190,7 +1195,7 @@ function getTimer(key) {
 
 function timerRemaining(timer) {
   if (!timer) return 0;
-  if (timer.paused || !timer.endAt) return clampRestSeconds(timer.remaining);
+  if (timer.paused || !timer.endAt) return Math.max(0, Number(timer.remaining) || 0);
   return Math.max(0, Math.ceil((timer.endAt - Date.now()) / 1000));
 }
 
@@ -1222,6 +1227,25 @@ function dailyMotivation() {
   return state.dailyMotivation.text;
 }
 
+function notifyRestTimer(final = false) {
+  if (navigator.vibrate) navigator.vibrate(final ? 90 : 25);
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const audio = new AudioContext();
+    const oscillator = audio.createOscillator();
+    const gain = audio.createGain();
+    oscillator.frequency.value = final ? 660 : 520;
+    gain.gain.value = final ? 0.055 : 0.035;
+    oscillator.connect(gain);
+    gain.connect(audio.destination);
+    oscillator.start();
+    oscillator.stop(audio.currentTime + (final ? 0.14 : 0.07));
+  } catch {
+    // Le message visuel reste affiché si le navigateur bloque le son.
+  }
+}
+
 function showScreen(screenId) {
   document.querySelectorAll(".screen").forEach((screen) => screen.classList.toggle("active", screen.id === screenId));
   document.querySelectorAll(".nav-item").forEach((item) => item.classList.toggle("active", item.dataset.screen === screenId));
@@ -1229,6 +1253,14 @@ function showScreen(screenId) {
 }
 
 function startWorkout(plannedOverride = null) {
+  if (state.activeWorkoutId) {
+    updateMessage(`Séance en cours retrouvée, ${state.profile.firstName}.`);
+    render();
+    showScreen("sessionScreen");
+    startTimer();
+    return;
+  }
+
   const planned = plannedOverride && plannedOverride.workoutId ? plannedOverride : nextPlannedWorkoutItem();
   const workout = planned ? workouts.find((item) => item.id === planned.workoutId) || nextWorkout() : nextWorkout();
   state.activeWorkoutId = workout.id;
@@ -1253,15 +1285,23 @@ function startWorkout(plannedOverride = null) {
   showScreen("sessionScreen");
 }
 
-function setWeight(exerciseId, value) {
+function saveWeightInput(exerciseId, value) {
   const exercise = activeWorkout().exercises.find((item) => item.id === exerciseId);
+  if (!exercise) return;
   const stats = getStats(exercise);
   const nextWeight = Math.max(0, Number(value) || 0);
   const startWeight = state.sessionStartWeights[exerciseId] ?? stats.lastWeight;
 
   stats.targetWeight = Math.round(nextWeight * 10) / 10;
   stats.loweredToday = stats.targetWeight < startWeight;
+  saveState();
+}
 
+function setWeight(exerciseId, value) {
+  saveWeightInput(exerciseId, value);
+  const exercise = activeWorkout().exercises.find((item) => item.id === exerciseId);
+  if (!exercise) return;
+  const stats = getStats(exercise);
   if (stats.loweredToday) {
     updateMessage("Poids trop lourd aujourd'hui, on garde une charge propre.");
   } else {
@@ -1283,13 +1323,17 @@ function setRest(exerciseId, value) {
 }
 
 function setManualRest(exerciseId) {
+  saveManualRestInput(exerciseId);
+  render();
+}
+
+function saveManualRestInput(exerciseId) {
   const minuteInput = document.querySelector(`[data-rest-minutes="${exerciseId}"]`);
   const secondInput = document.querySelector(`[data-rest-seconds="${exerciseId}"]`);
   const minutes = Math.max(0, Number(minuteInput?.value) || 0);
   const seconds = Math.max(0, Number(secondInput?.value) || 0);
   state.restDurations[exerciseId] = clampRestSeconds(minutes * 60 + seconds);
   saveState();
-  render();
 }
 
 function setReps(exerciseId, index, value) {
@@ -1298,16 +1342,20 @@ function setReps(exerciseId, index, value) {
 }
 
 function updateCardio() {
+  saveCardioInput();
+  renderCardio();
+}
+
+function saveCardioInput() {
   state.cardio = {
     type: elements.cardioType.value,
     duration: Math.max(0, Number(elements.cardioDuration.value) || 0),
     calories: Math.max(0, Number(elements.cardioCalories.value) || 0),
   };
   saveState();
-  renderCardio();
 }
 
-function updateWarmupItem(id, field, value) {
+function saveWarmupInput(id, field, value) {
   state.warmups = ensureWarmups().map((item) => {
     if (item.id !== id) return item;
     if (field === "type") return createWarmupEntry({ ...item, type: value });
@@ -1317,6 +1365,10 @@ function updateWarmupItem(id, field, value) {
   });
   state.warmup = warmupSummary(state.warmups);
   saveState();
+}
+
+function updateWarmupItem(id, field, value) {
+  saveWarmupInput(id, field, value);
   renderWarmup();
 }
 
@@ -1371,18 +1423,35 @@ function renderWarmup() {
 }
 
 function markSet(exerciseId, index) {
-  const exercise = activeWorkout().exercises.find((item) => item.id === exerciseId);
+  const workout = activeWorkout();
+  const exerciseIndex = workout.exercises.findIndex((item) => item.id === exerciseId);
+  const exercise = workout.exercises[exerciseIndex];
   if (state.reps[setKey(exerciseId, index)] === undefined) {
     state.reps[setKey(exerciseId, index)] = exercise.reps;
   }
   state.sets[setKey(exerciseId, index)] = "done";
   const duration = restDuration(exerciseId);
-  state.restTimers[setKey(exerciseId, index)] = {
-    duration,
-    remaining: duration,
-    endAt: Date.now() + duration * 1000,
-    paused: false,
-  };
+  const hasNextExercise = index === exercise.sets - 1 && exerciseIndex < workout.exercises.length - 1;
+  if (!hasNextExercise) {
+    state.restTimers[setKey(exerciseId, index)] = {
+      duration,
+      remaining: duration,
+      endAt: Date.now() + duration * 1000,
+      paused: false,
+      notifiedSeconds: [],
+      message: "",
+    };
+  }
+  if (hasNextExercise) {
+    state.restTimers[transitionKey(exerciseId)] = {
+      duration: TRANSITION_REST_SECONDS,
+      remaining: TRANSITION_REST_SECONDS,
+      endAt: Date.now() + TRANSITION_REST_SECONDS * 1000,
+      paused: false,
+      notifiedSeconds: [],
+      message: "",
+    };
+  }
   const repsDone = getSetReps(exercise, index);
   updateMessage(repsDone >= exercise.reps ? "Très bien, série proprement terminée." : "On garde le même poids pour la prochaine séance afin de valider proprement.");
   saveState();
@@ -1394,6 +1463,10 @@ function timerText(key, exerciseId) {
   const timer = getTimer(key);
   if (!timer) return formatTimer(restDuration(exerciseId));
   return formatTimer(timerRemaining(timer));
+}
+
+function timerMessage(key) {
+  return getTimer(key)?.message || "";
 }
 
 function toggleTimer(key) {
@@ -1415,7 +1488,7 @@ function toggleTimer(key) {
 
 function resetTimer(key, exerciseId) {
   const duration = restDuration(exerciseId);
-  state.restTimers[key] = { duration, remaining: duration, endAt: null, paused: true };
+  state.restTimers[key] = { duration, remaining: duration, endAt: null, paused: true, notifiedSeconds: [], message: "" };
   saveState();
   render();
 }
@@ -1832,12 +1905,22 @@ function renderSession() {
           <div><strong>Série ${index + 1}</strong><small>objectif ${exercise.reps} ${exerciseUnit(exercise)}</small></div>
           <input class="reps-input" type="number" min="0" max="999" value="${getSetReps(exercise, index)}" data-reps="${exercise.id}" data-index="${index}" aria-label="${exerciseUnit(exercise)} série ${index + 1}">
           <span class="rest-badge" data-timer="${key}">${timerText(key, exercise.id)}</span>
+          <small class="timer-message" data-timer-message="${key}">${timerMessage(key)}</small>
           <button class="set-button ${status === "done" ? "done" : ""}" type="button" data-set="${exercise.id}" data-index="${index}">Série terminée</button>
           <button class="timer-button" type="button" data-timer-toggle="${key}" ${!timer || remaining <= 0 ? "disabled" : ""}>${pauseLabel}</button>
           <button class="timer-button" type="button" data-timer-reset="${key}" data-timer-exercise="${exercise.id}" ${!timer ? "disabled" : ""}>Reset</button>
         </div>
       `;
     }).join("");
+    const transitionTimer = getTimer(transitionKey(exercise.id));
+    const transitionRemaining = timerRemaining(transitionTimer);
+    const transitionRest = transitionTimer ? `
+      <p class="coach-note transition-rest">
+        <strong>Repos avant le prochain exercice</strong>
+        <span class="rest-badge" data-timer="${transitionKey(exercise.id)}">${formatTimer(transitionRemaining)}</span>
+        <small class="timer-message" data-timer-message="${transitionKey(exercise.id)}">${timerMessage(transitionKey(exercise.id))}</small>
+      </p>
+    ` : "";
 
     return `
       <article class="exercise-card">
@@ -1882,6 +1965,7 @@ function renderSession() {
           </div>
         </div>
         <div class="sets">${sets}</div>
+        ${transitionRest}
         <p class="coach-note">${exerciseAnalysis(exercise)}</p>
       </article>
     `;
@@ -1901,6 +1985,14 @@ function render() {
   renderCalendar();
 }
 
+function resumeActiveWorkoutScreen() {
+  if (!state.profile?.firstName || !state.activeWorkoutId) return false;
+  renderSession();
+  showScreen("sessionScreen");
+  startTimer();
+  return true;
+}
+
 function startTimer() {
   clearInterval(timerId);
   timerId = setInterval(() => {
@@ -1910,10 +2002,22 @@ function startTimer() {
       const timer = getTimer(key);
       const left = timerRemaining(timer);
       const badge = document.querySelector(`[data-timer="${key}"]`);
+      const message = document.querySelector(`[data-timer-message="${key}"]`);
       if (badge) badge.textContent = formatTimer(left);
+      if (message) message.textContent = timer?.message || "";
       if (timer && !timer.paused && left > 0) hasActiveTimer = true;
+      if (timer && !timer.paused && left > 0 && left <= 5 && !(timer.notifiedSeconds || []).includes(left)) {
+        state.restTimers[key] = { ...timer, notifiedSeconds: [...(timer.notifiedSeconds || []), left] };
+        notifyRestTimer(false);
+        changedTimerState = true;
+      }
       if (timer && !timer.paused && left === 0) {
-        state.restTimers[key] = { ...timer, remaining: 0, endAt: null, paused: true };
+        const alreadyFinished = timer.message === "Repos terminé";
+        state.restTimers[key] = { ...timer, remaining: 0, endAt: null, paused: true, message: "Repos terminé" };
+        if (!alreadyFinished) {
+          notifyRestTimer(true);
+          if (message) message.textContent = "Repos terminé";
+        }
         changedTimerState = true;
       }
     });
@@ -2190,6 +2294,16 @@ document.addEventListener("click", (event) => {
   if (programSummary) showScreen("programSummaryScreen");
 });
 
+document.addEventListener("input", (event) => {
+  if (event.target.matches("[data-weight]")) saveWeightInput(event.target.dataset.weight, event.target.value);
+  if (event.target.matches("[data-reps]")) setReps(event.target.dataset.reps, Number(event.target.dataset.index), event.target.value);
+  if (event.target.matches("[data-rest-minutes]")) saveManualRestInput(event.target.dataset.restMinutes);
+  if (event.target.matches("[data-rest-seconds]")) saveManualRestInput(event.target.dataset.restSeconds);
+  if (event.target.matches("#cardioType, #cardioDuration, #cardioCalories")) saveCardioInput();
+  if (event.target.matches("[data-warmup-duration]")) saveWarmupInput(event.target.dataset.warmupDuration, "duration", event.target.value);
+  if (event.target.matches("[data-warmup-calories]")) saveWarmupInput(event.target.dataset.warmupCalories, "calories", event.target.value);
+});
+
 document.addEventListener("change", (event) => {
   if (event.target.matches("[data-weight]")) setWeight(event.target.dataset.weight, event.target.value);
   if (event.target.matches("[data-rest-duration]")) setRest(event.target.dataset.restDuration, event.target.value);
@@ -2201,5 +2315,22 @@ document.addEventListener("change", (event) => {
   if (event.target.matches("#cardioType, #cardioDuration, #cardioCalories")) updateCardio();
 });
 
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") {
+    saveState();
+    return;
+  }
+  if (state.activeWorkoutId) {
+    render();
+    resumeActiveWorkoutScreen();
+  }
+});
+
+window.addEventListener("pageshow", () => {
+  if (state.activeWorkoutId) resumeActiveWorkoutScreen();
+});
+
+window.addEventListener("beforeunload", saveState);
+
 render();
-startTimer();
+if (!resumeActiveWorkoutScreen()) startTimer();

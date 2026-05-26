@@ -864,6 +864,46 @@ function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
+function syncActiveSessionInputsFromDOM() {
+  // Sauvegarde de sécurité : récupère ce qui est affiché à l'écran avant de changer de page,
+  // de quitter l'application ou de relancer un rendu. Ça évite de perdre un poids/reps tapé.
+  if (!state?.profile) return;
+
+  document.querySelectorAll('[data-weight]').forEach((input) => {
+    const exerciseId = input.dataset.weight;
+    const exercise = activeWorkout()?.exercises?.find((item) => item.id === exerciseId);
+    if (!exercise || isBodyweightExercise(exercise)) return;
+    saveWeightInput(exerciseId, input.value);
+  });
+
+  document.querySelectorAll('[data-reps]').forEach((input) => {
+    const exerciseId = input.dataset.reps;
+    const index = Number(input.dataset.index);
+    state.reps[setKey(exerciseId, index)] = Math.max(0, Number(input.value) || 0);
+  });
+
+  document.querySelectorAll('[data-rest-minutes]').forEach((input) => {
+    saveManualRestInput(input.dataset.restMinutes);
+  });
+
+  if (elements?.cardioType && elements?.cardioDuration && elements?.cardioCalories) {
+    state.cardio = {
+      type: elements.cardioType.value,
+      duration: Math.max(0, Number(elements.cardioDuration.value) || 0),
+      calories: Math.max(0, Number(elements.cardioCalories.value) || 0),
+    };
+  }
+
+  document.querySelectorAll('[data-warmup-duration]').forEach((input) => {
+    saveWarmupInput(input.dataset.warmupDuration, 'duration', input.value);
+  });
+  document.querySelectorAll('[data-warmup-calories]').forEach((input) => {
+    saveWarmupInput(input.dataset.warmupCalories, 'calories', input.value);
+  });
+
+  saveState();
+}
+
 function todayKey() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -1227,26 +1267,42 @@ function dailyMotivation() {
   return state.dailyMotivation.text;
 }
 
+let coachAudioContext = null;
+
+function getCoachAudioContext() {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return null;
+    if (!coachAudioContext) coachAudioContext = new AudioContext();
+    if (coachAudioContext.state === "suspended") coachAudioContext.resume();
+    return coachAudioContext;
+  } catch {
+    return null;
+  }
+}
+
 function notifyRestTimer(final = false) {
   if (navigator.vibrate) navigator.vibrate(final ? 90 : 25);
   try {
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContext) return;
-    const audio = new AudioContext();
+    const audio = getCoachAudioContext();
+    if (!audio) return;
     const oscillator = audio.createOscillator();
     const gain = audio.createGain();
-    oscillator.frequency.value = final ? 660 : 520;
-    gain.gain.value = final ? 0.055 : 0.035;
+    oscillator.frequency.value = final ? 760 : 560;
+    gain.gain.value = final ? 0.06 : 0.04;
     oscillator.connect(gain);
     gain.connect(audio.destination);
     oscillator.start();
-    oscillator.stop(audio.currentTime + (final ? 0.14 : 0.07));
+    oscillator.stop(audio.currentTime + (final ? 0.16 : 0.08));
   } catch {
     // Le message visuel reste affiché si le navigateur bloque le son.
   }
 }
 
 function showScreen(screenId) {
+  syncActiveSessionInputsFromDOM();
+  state.currentScreen = screenId;
+  saveState();
   document.querySelectorAll(".screen").forEach((screen) => screen.classList.toggle("active", screen.id === screenId));
   document.querySelectorAll(".nav-item").forEach((item) => item.classList.toggle("active", item.dataset.screen === screenId));
   window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1423,6 +1479,8 @@ function renderWarmup() {
 }
 
 function markSet(exerciseId, index) {
+  syncActiveSessionInputsFromDOM();
+  getCoachAudioContext();
   const workout = activeWorkout();
   const exerciseIndex = workout.exercises.findIndex((item) => item.id === exerciseId);
   const exercise = workout.exercises[exerciseIndex];
@@ -2317,7 +2375,7 @@ document.addEventListener("change", (event) => {
 
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") {
-    saveState();
+    syncActiveSessionInputsFromDOM();
     return;
   }
   if (state.activeWorkoutId) {
@@ -2330,7 +2388,8 @@ window.addEventListener("pageshow", () => {
   if (state.activeWorkoutId) resumeActiveWorkoutScreen();
 });
 
-window.addEventListener("beforeunload", saveState);
+window.addEventListener("pagehide", syncActiveSessionInputsFromDOM);
+window.addEventListener("beforeunload", syncActiveSessionInputsFromDOM);
 
 render();
 if (!resumeActiveWorkoutScreen()) startTimer();

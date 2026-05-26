@@ -2209,11 +2209,31 @@ function startTimer() {
       if (timer && !timer.paused && left === 0) {
         const alreadyFinished = timer.message === "Gainage terminé";
         const exercise = activeWorkout().exercises.find((item) => item.id === timer.exerciseId);
+        const target = exercise ? exerciseTargetValue(exercise) : timer.target;
+        const restKey = setKey(timer.exerciseId, timer.index);
+        const duration = restDuration(timer.exerciseId);
         state.executionTimers[key] = { ...timer, remaining: 0, endAt: null, paused: true, message: "Gainage terminé" };
-        if (!alreadyFinished) notifyRestTimer(true);
+        if (!alreadyFinished) {
+          state.sets[restKey] = "done";
+          state.reps[restKey] = target;
+          state.restTimers[restKey] = {
+            duration,
+            remaining: duration,
+            endAt: Date.now() + duration * 1000,
+            paused: false,
+            notifiedSeconds: [],
+            message: "",
+          };
+          updateMessage("Gainage terminé, récupération lancée.");
+          notifyRestTimer(true);
+          hasActiveTimer = true;
+        }
         if (message) message.textContent = "Gainage terminé";
         const setButton = document.querySelector(`[data-set="${timer.exerciseId}"][data-index="${timer.index}"]`);
-        if (setButton) setButton.disabled = false;
+        if (setButton) {
+          setButton.disabled = false;
+          setButton.classList.add("done");
+        }
         changedTimerState = true;
       }
     });

@@ -1401,19 +1401,28 @@ function startWorkout(plannedOverride = null) {
 }
 
 function saveWeightInput(exerciseId, value) {
-  const exercise = activeWorkout().exercises.find((item) => item.id === exerciseId);
-  if (!exercise) return;
-  const stats = getStats(exercise);
+  if (value === "") return;
   const nextWeight = Math.max(0, Number(value) || 0);
+  const savedWeight = Math.round(nextWeight * 10) / 10;
+  if (!state.sessionWeights) state.sessionWeights = {};
+  state.sessionWeights[exerciseId] = savedWeight;
+
+  const exercise = activeWorkout()?.exercises?.find((item) => item.id === exerciseId);
+  if (!exercise) {
+    saveState();
+    return;
+  }
+
+  const stats = getStats(exercise);
   const startWeight = state.sessionStartWeights[exerciseId] ?? stats.lastWeight;
 
-  state.sessionWeights[exerciseId] = Math.round(nextWeight * 10) / 10;
-  stats.targetWeight = Math.round(nextWeight * 10) / 10;
+  stats.targetWeight = savedWeight;
   stats.loweredToday = stats.targetWeight < startWeight;
   saveState();
 }
 
 function setWeight(exerciseId, value) {
+  if (value === "") value = 0;
   saveWeightInput(exerciseId, value);
   const exercise = activeWorkout().exercises.find((item) => item.id === exerciseId);
   if (!exercise) return;

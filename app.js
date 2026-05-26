@@ -1698,7 +1698,7 @@ function completeWorkout() {
     const allFinished = statuses.every((status) => status !== "open");
     const allValidated = allFinished && reps.every((value) => value >= target);
     const hasMissedTarget = statuses.some((status, index) => status !== "open" && reps[index] < target);
-    const usedWeight = stats.targetWeight;
+    const usedWeight = currentSessionWeight(exercise, stats);
 
     const suggestedWeight = allValidated && !bodyweight
       ? Math.round((usedWeight + 2.5) * 10) / 10
@@ -2046,6 +2046,7 @@ function renderSession() {
     const stats = getStats(exercise);
     const bodyweight = isBodyweightExercise(exercise);
     const advice = nextWeightAdvice(exercise, stats);
+    const sessionWeight = currentSessionWeight(exercise, stats);
     const target = exerciseTargetValue(exercise);
     const timedExercise = exerciseUnit(exercise) === "sec";
     const sets = Array.from({ length: exercise.sets }, (_, index) => {
@@ -2102,10 +2103,10 @@ function renderSession() {
         </div>
         <div class="control-block">
           ${!bodyweight ? `
-            <label>Poids actuel <small>dernier ${stats.lastWeight} kg · objectif ${stats.targetWeight} kg</small></label>
+            <label>Poids actuel <small>dernier ${stats.lastWeight} kg · objectif ${sessionWeight} kg</small></label>
             <div class="weight-control">
               <button type="button" data-weight-minus="${exercise.id}">-</button>
-              <input type="number" min="0" step="0.5" value="${stats.targetWeight}" data-weight="${exercise.id}" aria-label="Poids ${exercise.name}">
+              <input type="number" min="0" step="0.5" value="${sessionWeight}" data-weight="${exercise.id}" aria-label="Poids ${exercise.name}">
               <span>kg</span>
               <button type="button" data-weight-plus="${exercise.id}">+</button>
             </div>

@@ -1661,7 +1661,12 @@ function renderWarmup() {
 }
 
 function markSet(exerciseId, index) {
+  const weightInput = document.querySelector(`[data-set-weight="${exerciseId}"][data-index="${index}"]`);
+  const enteredWeight = weightInput?.value;
   syncActiveSessionInputsFromDOM();
+  if (enteredWeight !== undefined && enteredWeight !== "") {
+    saveSetWeight(exerciseId, index, enteredWeight);
+  }
   getCoachAudioContext();
   const workout = activeWorkout();
   const exerciseIndex = workout.exercises.findIndex((item) => item.id === exerciseId);

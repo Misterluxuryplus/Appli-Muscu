@@ -514,6 +514,50 @@ const exerciseGuides = {
   },
 };
 
+const exerciseAlternatives = {
+  bench: [
+    { name: "Chest Press machine", thumb: "push" },
+    { name: "Développé couché machine", thumb: "push" },
+  ],
+  shoulder: [
+    { name: "Développé épaules machine", thumb: "push" },
+    { name: "Élévations latérales légères", thumb: "push" },
+  ],
+  dips: [
+    { name: "Chest Press machine", thumb: "push" },
+    { name: "Développé couché machine", thumb: "push" },
+    { name: "Pompes inclinées", thumb: "push", bodyweight: true },
+  ],
+  row: [
+    { name: "Rowing machine guidée", thumb: "pull" },
+    { name: "Tirage élastique assis", thumb: "pull", bodyweight: true },
+  ],
+  pulldown: [
+    { name: "Tirage vertical assisté", thumb: "pull" },
+    { name: "Tirage élastique", thumb: "pull", bodyweight: true },
+  ],
+  curl: [
+    { name: "Curl machine", thumb: "pull" },
+    { name: "Curl poulie", thumb: "pull" },
+  ],
+  squat: [
+    { name: "Presse à cuisses", thumb: "legs" },
+    { name: "Squat guidé Smith Machine", thumb: "legs" },
+  ],
+  rdl: [
+    { name: "Leg Curl", thumb: "legs" },
+    { name: "Hip Thrust machine", thumb: "legs" },
+  ],
+  press: [
+    { name: "Presse à cuisses légère", thumb: "legs" },
+    { name: "Squat assisté", thumb: "legs", bodyweight: true },
+  ],
+  plank: [
+    { name: "Gainage genoux au sol", thumb: "legs", bodyweight: true, unit: "sec" },
+    { name: "Gainage incliné", thumb: "legs", bodyweight: true, unit: "sec" },
+  ],
+};
+
 const goalAdvice = {
   "Perdre du poids": "Conseil coach : musculation simple, cardio progressif et régularité.",
   "Me muscler": "Conseil coach : exécution propre et progression douce des charges.",
@@ -562,6 +606,8 @@ const defaultState = {
   sessionStartWeights: {},
   sessionWeights: {},
   sessionTimedTargets: {},
+  sessionExerciseReplacements: {},
+  alternativePickerExerciseId: null,
   restTimers: {},
   executionTimers: {},
   restDurations: {},
@@ -591,6 +637,8 @@ function freshState() {
     sessionStartWeights: {},
     sessionWeights: {},
     sessionTimedTargets: {},
+    sessionExerciseReplacements: {},
+    alternativePickerExerciseId: null,
     restTimers: {},
     executionTimers: {},
     restDurations: {},
@@ -747,6 +795,8 @@ function normalizeState(loadedState) {
     exerciseStats: loadedState.exerciseStats || {},
     sessionWeights: loadedState.sessionWeights || {},
     sessionTimedTargets: loadedState.sessionTimedTargets || {},
+    sessionExerciseReplacements: loadedState.sessionExerciseReplacements || {},
+    alternativePickerExerciseId: loadedState.alternativePickerExerciseId || null,
     executionTimers: loadedState.executionTimers || {},
     exerciseHistory: loadedState.exerciseHistory || [],
     sessionReports: loadedState.sessionReports || [],
@@ -881,6 +931,8 @@ function resetTemporarySessionFields() {
   state.sessionStartWeights = {};
   state.sessionWeights = {};
   state.sessionTimedTargets = {};
+  state.sessionExerciseReplacements = {};
+  state.alternativePickerExerciseId = null;
   state.warmups = [createWarmupEntry()];
   state.warmup = warmupSummary(state.warmups);
   state.cardio = { type: "tapis de course", duration: 0, calories: 0 };
@@ -1121,7 +1173,15 @@ function nextWorkout() {
 }
 
 function activeWorkout() {
-  return workouts.find((workout) => workout.id === state.activeWorkoutId) || nextWorkout();
+  const workout = workouts.find((item) => item.id === state.activeWorkoutId) || nextWorkout();
+  const replacements = state.sessionExerciseReplacements || {};
+  return {
+    ...workout,
+    exercises: workout.exercises.map((exercise) => {
+      const replacement = replacements[exercise.id];
+      return replacement ? { ...exercise, ...replacement, id: exercise.id, originalName: exercise.name } : exercise;
+    }),
+  };
 }
 
 function currentProgram() {
@@ -1441,6 +1501,23 @@ function adjustWeight(exerciseId, delta) {
   setWeight(exerciseId, Math.max(0, currentSessionWeight(exercise, stats) + delta));
 }
 
+function replaceSessionExercise(exerciseId, alternativeIndex) {
+  const exercise = activeWorkout().exercises.find((item) => item.id === exerciseId);
+  const alternative = exerciseAlternatives[exerciseId]?.[alternativeIndex];
+  if (!exercise || !alternative) return;
+  state.sessionExerciseReplacements[exerciseId] = {
+    name: alternative.name,
+    thumb: alternative.thumb || exercise.thumb,
+    bodyweight: Boolean(alternative.bodyweight),
+    unit: alternative.unit || exercise.unit,
+    video: "",
+  };
+  state.alternativePickerExerciseId = null;
+  updateMessage("Exercice adapté à votre niveau 💪");
+  saveState();
+  render();
+}
+
 function setRest(exerciseId, value) {
   state.restDurations[exerciseId] = parseTimerInput(value);
   saveState();
@@ -1708,6 +1785,8 @@ function completeWorkout() {
     const allValidated = allFinished && reps.every((value) => value >= target);
     const hasMissedTarget = statuses.some((status, index) => status !== "open" && reps[index] < target);
     const usedWeight = currentSessionWeight(exercise, stats);
+    const startingWeight = Number(state.sessionStartWeights[exercise.id] ?? stats.lastWeight ?? 0);
+    const reducedCharge = !bodyweight && usedWeight < startingWeight;
 
     const suggestedWeight = allValidated && !bodyweight
       ? Math.round((usedWeight + 2.5) * 10) / 10
@@ -1741,6 +1820,9 @@ function completeWorkout() {
       needsSameWeight: !bodyweight && hasMissedTarget,
       suggestedWeight,
       bodyweight,
+      reducedCharge,
+      originalName: exercise.originalName || exercise.name,
+      adapted: Boolean(exercise.originalName),
     });
   });
 
@@ -1790,9 +1872,12 @@ function completeWorkout() {
 
   const firstName = state.profile.firstName;
   const hasMissedTargets = exerciseResults.some((item) => item.needsSameWeight);
+  const hasReducedCharge = exerciseResults.some((item) => item.reducedCharge);
   const sessionCount = state.history.length;
   let finalMessage = pickMotivation("afterWorkout", { firstName, totalCalories });
-  if (hasMissedTargets) {
+  if (hasReducedCharge) {
+    finalMessage = "Tu as réduit la charge pendant l'exercice. Le poids de départ était peut-être un peu trop élevé. On ajustera la prochaine séance.";
+  } else if (hasMissedTargets) {
     finalMessage = "Objectif presque atteint, continue comme ça. On garde le même poids pour la prochaine séance.";
   } else if (progressions > 0) {
     finalMessage = `${pickMotivation("progression", { firstName, totalCalories })} La prochaine fois, essaie un peu plus lourd.`;
@@ -2058,6 +2143,8 @@ function renderSession() {
     const sessionWeight = currentSessionWeight(exercise, stats);
     const target = exerciseTargetValue(exercise);
     const timedExercise = exerciseUnit(exercise) === "sec";
+    const alternatives = exerciseAlternatives[exercise.id] || [];
+    const alternativesOpen = state.alternativePickerExerciseId === exercise.id;
     const sets = Array.from({ length: exercise.sets }, (_, index) => {
       const key = setKey(exercise.id, index);
       const execKey = executionKey(exercise.id, index);
@@ -2108,6 +2195,14 @@ function renderSession() {
             </div>
             <button class="guide-button" type="button" data-guide="${exercise.id}">Voir l'exercice</button>
             ${exercise.video ? `<a class="video-link" href="${exercise.video}" target="_blank" rel="noopener noreferrer">▶ Voir la vidéo</a>` : ""}
+            ${alternatives.length ? `<button class="guide-button" type="button" data-alternative-picker="${exercise.id}">Exercice trop difficile ?</button>` : ""}
+            ${alternativesOpen ? `
+              <div class="choice-cards compact">
+                ${alternatives.map((alternative, index) => `
+                  <button class="choice-card" type="button" data-use-alternative="${exercise.id}" data-alternative-index="${index}">${alternative.name}</button>
+                `).join("")}
+              </div>
+            ` : ""}
           </div>
         </div>
         <div class="control-block">
@@ -2508,6 +2603,17 @@ document.addEventListener("click", (event) => {
 
   const moveScheduled = event.target.closest("[data-move-scheduled]");
   if (moveScheduled) showMoveBox(scheduledWorkoutById(moveScheduled.dataset.moveScheduled));
+
+  const alternativePicker = event.target.closest("[data-alternative-picker]");
+  if (alternativePicker) {
+    const exerciseId = alternativePicker.dataset.alternativePicker;
+    state.alternativePickerExerciseId = state.alternativePickerExerciseId === exerciseId ? null : exerciseId;
+    saveState();
+    render();
+  }
+
+  const alternative = event.target.closest("[data-use-alternative]");
+  if (alternative) replaceSessionExercise(alternative.dataset.useAlternative, Number(alternative.dataset.alternativeIndex));
 
   const guide = event.target.closest("[data-guide]");
   if (guide) openExerciseGuide(guide.dataset.guide);

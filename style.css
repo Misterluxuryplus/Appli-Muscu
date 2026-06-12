@@ -1016,6 +1016,17 @@ h3 { font-size: 1rem; }
   text-align: center;
 }
 
+.set-value-field {
+  display: grid;
+  gap: 3px;
+  justify-items: center;
+}
+
+.set-value-field small {
+  font-size: 0.68rem;
+  font-weight: 850;
+}
+
 .set-button {
   min-width: 0;
   padding: 0 10px;

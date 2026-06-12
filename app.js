@@ -605,6 +605,7 @@ const defaultState = {
   exerciseStats: {},
   sessionStartWeights: {},
   sessionWeights: {},
+  sessionSetWeights: {},
   sessionTimedTargets: {},
   sessionExerciseReplacements: {},
   alternativePickerExerciseId: null,
@@ -636,6 +637,7 @@ function freshState() {
     exerciseStats: {},
     sessionStartWeights: {},
     sessionWeights: {},
+    sessionSetWeights: {},
     sessionTimedTargets: {},
     sessionExerciseReplacements: {},
     alternativePickerExerciseId: null,
@@ -794,6 +796,7 @@ function normalizeState(loadedState) {
     ...loadedState,
     exerciseStats: loadedState.exerciseStats || {},
     sessionWeights: loadedState.sessionWeights || {},
+    sessionSetWeights: loadedState.sessionSetWeights || {},
     sessionTimedTargets: loadedState.sessionTimedTargets || {},
     sessionExerciseReplacements: loadedState.sessionExerciseReplacements || {},
     alternativePickerExerciseId: loadedState.alternativePickerExerciseId || null,
@@ -930,6 +933,7 @@ function resetTemporarySessionFields() {
   state.executionTimers = {};
   state.sessionStartWeights = {};
   state.sessionWeights = {};
+  state.sessionSetWeights = {};
   state.sessionTimedTargets = {};
   state.sessionExerciseReplacements = {};
   state.alternativePickerExerciseId = null;
@@ -948,6 +952,10 @@ function syncActiveSessionInputsFromDOM() {
     const exercise = activeWorkout()?.exercises?.find((item) => item.id === exerciseId);
     if (!exercise || isBodyweightExercise(exercise)) return;
     saveWeightInput(exerciseId, input.value);
+  });
+
+  document.querySelectorAll('[data-set-weight]').forEach((input) => {
+    saveSetWeight(input.dataset.setWeight, Number(input.dataset.index), input.value);
   });
 
   document.querySelectorAll('[data-reps]').forEach((input) => {
@@ -1310,6 +1318,33 @@ function currentSessionWeight(exercise, stats = getStats(exercise)) {
   return 0;
 }
 
+function getSetWeight(exercise, index, stats = getStats(exercise)) {
+  const key = setKey(exercise.id, index);
+  const savedWeight = state.sessionSetWeights?.[key];
+  if (savedWeight !== undefined && savedWeight !== null && savedWeight !== "") return Number(savedWeight) || 0;
+  if (index > 0) return getSetWeight(exercise, index - 1, stats);
+  return currentSessionWeight(exercise, stats);
+}
+
+function saveSetWeight(exerciseId, index, value) {
+  if (value === "") return;
+  const exercise = activeWorkout()?.exercises?.find((item) => item.id === exerciseId);
+  if (!exercise || isBodyweightExercise(exercise)) return;
+  const nextWeight = Math.round(Math.max(0, Number(value) || 0) * 10) / 10;
+  if (!state.sessionSetWeights) state.sessionSetWeights = {};
+  for (let setIndex = index; setIndex < exercise.sets; setIndex += 1) {
+    state.sessionSetWeights[setKey(exerciseId, setIndex)] = nextWeight;
+    const input = document.querySelector(`[data-set-weight="${exerciseId}"][data-index="${setIndex}"]`);
+    if (input && input !== document.activeElement) input.value = nextWeight;
+  }
+  state.sessionWeights[exerciseId] = nextWeight;
+  const stats = getStats(exercise);
+  const startWeight = Number(state.sessionStartWeights[exerciseId] ?? stats.lastWeight ?? 0);
+  stats.targetWeight = nextWeight;
+  stats.loweredToday = nextWeight < startWeight;
+  saveState();
+}
+
 function saveTimedTargetInput(exerciseId) {
   const minuteInput = document.querySelector(`[data-hold-minutes="${exerciseId}"]`);
   const secondInput = document.querySelector(`[data-hold-seconds="${exerciseId}"]`);
@@ -1486,6 +1521,7 @@ function setWeight(exerciseId, value) {
   saveWeightInput(exerciseId, value);
   const exercise = activeWorkout().exercises.find((item) => item.id === exerciseId);
   if (!exercise) return;
+  saveSetWeight(exerciseId, 0, value);
   const stats = getStats(exercise);
   if (stats.loweredToday) {
     updateMessage("Poids trop lourd aujourd'hui, on garde une charge propre.");
@@ -1781,12 +1817,16 @@ function completeWorkout() {
     const target = exerciseTargetValue(exercise);
     const statuses = Array.from({ length: exercise.sets }, (_, index) => getSetStatus(exercise.id, index));
     const reps = Array.from({ length: exercise.sets }, (_, index) => getSetReps(exercise, index));
+    const weights = bodyweight ? [] : Array.from({ length: exercise.sets }, (_, index) => getSetWeight(exercise, index, stats));
     const allFinished = statuses.every((status) => status !== "open");
     const allValidated = allFinished && reps.every((value) => value >= target);
     const hasMissedTarget = statuses.some((status, index) => status !== "open" && reps[index] < target);
-    const usedWeight = currentSessionWeight(exercise, stats);
+    const usedWeight = bodyweight ? 0 : Number(weights.at(-1) ?? currentSessionWeight(exercise, stats));
     const startingWeight = Number(state.sessionStartWeights[exercise.id] ?? stats.lastWeight ?? 0);
-    const reducedCharge = !bodyweight && usedWeight < startingWeight;
+    const reducedCharge = !bodyweight && (
+      usedWeight < startingWeight ||
+      weights.some((weight, index) => index > 0 && weight < weights[index - 1])
+    );
 
     const suggestedWeight = allValidated && !bodyweight
       ? Math.round((usedWeight + 2.5) * 10) / 10
@@ -1810,6 +1850,7 @@ function completeWorkout() {
       exerciseId: exercise.id,
       name: exercise.name,
       weight: bodyweight ? null : usedWeight,
+      weights,
       reps,
       statuses,
       sets: exercise.sets,
@@ -2140,7 +2181,6 @@ function renderSession() {
     const stats = getStats(exercise);
     const bodyweight = isBodyweightExercise(exercise);
     const advice = nextWeightAdvice(exercise, stats);
-    const sessionWeight = currentSessionWeight(exercise, stats);
     const target = exerciseTargetValue(exercise);
     const timedExercise = exerciseUnit(exercise) === "sec";
     const alternatives = exerciseAlternatives[exercise.id] || [];
@@ -2159,10 +2199,18 @@ function renderSession() {
           <span class="rest-badge" data-execution-timer="${execKey}">${executionTimerText(execKey, exercise)}</span>
           <small class="timer-message" data-execution-message="${execKey}">${executionTimerMessage(execKey)}</small>
         ` : "";
-      const repsInput = timedExercise ? "" : `<input class="reps-input" type="number" min="0" max="999" value="${getSetReps(exercise, index)}" data-reps="${exercise.id}" data-index="${index}" aria-label="${exerciseUnit(exercise)} série ${index + 1}">`;
+      const weightInput = bodyweight ? "" : `
+        <label class="set-value-field"><small>Poids</small>
+          <input class="reps-input" type="number" min="0" step="0.5" value="${getSetWeight(exercise, index, stats)}" data-set-weight="${exercise.id}" data-index="${index}" aria-label="Poids série ${index + 1} ${exercise.name}">
+        </label>`;
+      const repsInput = timedExercise ? "" : `
+        <label class="set-value-field"><small>Reps</small>
+          <input class="reps-input" type="number" min="0" max="999" value="${getSetReps(exercise, index)}" data-reps="${exercise.id}" data-index="${index}" aria-label="${exerciseUnit(exercise)} série ${index + 1}">
+        </label>`;
       return `
         <div class="set-row">
           <div><strong>Série ${index + 1}</strong><small>objectif ${target} ${exerciseUnit(exercise)}</small></div>
+          ${weightInput}
           ${repsInput}
           ${executionControl}
           <span class="rest-badge" data-timer="${key}">${timerText(key, exercise.id)}</span>
@@ -2206,15 +2254,6 @@ function renderSession() {
           </div>
         </div>
         <div class="control-block">
-          ${!bodyweight ? `
-            <label>Poids actuel <small>dernier ${stats.lastWeight} kg · objectif ${sessionWeight} kg</small></label>
-            <div class="weight-control">
-              <button type="button" data-weight-minus="${exercise.id}">-</button>
-              <input type="number" min="0" step="0.5" value="${sessionWeight}" data-weight="${exercise.id}" aria-label="Poids ${exercise.name}">
-              <span>kg</span>
-              <button type="button" data-weight-plus="${exercise.id}">+</button>
-            </div>
-          ` : ""}
           ${timedExercise ? `
             <label>Temps de maintien <small>${target} sec</small></label>
             <div class="rest-control">
@@ -2624,6 +2663,7 @@ document.addEventListener("click", (event) => {
 
 document.addEventListener("input", (event) => {
   if (event.target.matches("[data-weight]")) saveWeightInput(event.target.dataset.weight, event.target.value);
+  if (event.target.matches("[data-set-weight]")) saveSetWeight(event.target.dataset.setWeight, Number(event.target.dataset.index), event.target.value);
   if (event.target.matches("[data-reps]")) setReps(event.target.dataset.reps, Number(event.target.dataset.index), event.target.value);
   if (event.target.matches("[data-rest-minutes]")) saveManualRestInput(event.target.dataset.restMinutes);
   if (event.target.matches("[data-rest-seconds]")) saveManualRestInput(event.target.dataset.restSeconds);
@@ -2636,6 +2676,7 @@ document.addEventListener("input", (event) => {
 
 document.addEventListener("change", (event) => {
   if (event.target.matches("[data-weight]")) setWeight(event.target.dataset.weight, event.target.value);
+  if (event.target.matches("[data-set-weight]")) saveSetWeight(event.target.dataset.setWeight, Number(event.target.dataset.index), event.target.value);
   if (event.target.matches("[data-rest-duration]")) setRest(event.target.dataset.restDuration, event.target.value);
   if (event.target.matches("[data-rest-minutes]")) setManualRest(event.target.dataset.restMinutes);
   if (event.target.matches("[data-rest-seconds]")) setManualRest(event.target.dataset.restSeconds);
